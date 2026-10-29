@@ -28,10 +28,14 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,12 +52,24 @@ import com.cluehaven.puzzlegames.ui.theme.Gold
 import com.cluehaven.puzzlegames.ui.theme.Mint
 import com.cluehaven.puzzlegames.ui.theme.Teal
 import com.cluehaven.puzzlegames.game.tilemerge.TileMergeScreen
+import com.cluehaven.puzzlegames.data.AppSettings
+import com.cluehaven.puzzlegames.data.SettingsRepository
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { CluehavenTheme(darkTheme = false) { CluehavenApp() } }
+        setContent {
+            val settingsRepository = remember { SettingsRepository(applicationContext) }
+            val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
+            val scope = rememberCoroutineScope()
+            CluehavenTheme(darkTheme = settings.darkTheme) {
+                CluehavenApp(settings.darkTheme) { enabled ->
+                    scope.launch { settingsRepository.setDarkTheme(enabled) }
+                }
+            }
+        }
     }
 }
 
@@ -78,7 +94,7 @@ private val games = listOf(
 )
 
 @Composable
-private fun CluehavenApp() {
+private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
     var route by rememberSaveable { mutableStateOf("home") }
     val selectedGame = games.firstOrNull { it.id == route }
 
@@ -122,13 +138,38 @@ private fun CluehavenApp() {
                 "Your puzzle stats and daily streaks will appear here as you play.",
                 padding,
             )
-            route == "settings" -> SimpleScreen(
-                "Settings",
-                "Cluehaven saves your progress on this device. Appearance, sound, and accessibility options will live here.",
-                padding,
-            )
+            route == "settings" -> SettingsScreen(padding, darkTheme, setDarkTheme)
             else -> HomeScreen(padding) { route = it }
         }
+    }
+}
+
+@Composable
+private fun SettingsScreen(
+    padding: PaddingValues,
+    darkTheme: Boolean,
+    setDarkTheme: (Boolean) -> Unit,
+) {
+    Column(
+        Modifier.fillMaxSize().padding(padding).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        Text("Settings", style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold)
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Row(
+                Modifier.fillMaxWidth().clickable { setDarkTheme(!darkTheme) }.padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Dark theme", style = MaterialTheme.typography.titleMedium)
+                Switch(checked = darkTheme, onCheckedChange = setDarkTheme)
+            }
+        }
+        Text(
+            "Your settings and puzzle progress are saved on this device.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

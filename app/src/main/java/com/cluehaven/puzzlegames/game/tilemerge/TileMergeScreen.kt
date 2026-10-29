@@ -18,11 +18,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,12 +51,20 @@ import kotlin.math.abs
 @Composable
 fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
     val context = LocalContext.current
-    val storage = remember(context) { TileMergeStorage(context) }
-    var game by remember { mutableStateOf(storage.load()) }
+    val storage = remember(context) { TileMergeStorage.get(context) }
+    var loadedGame by remember(storage) { mutableStateOf<TileMergeState?>(null) }
     var showRestartDialog by remember { mutableStateOf(false) }
 
+    LaunchedEffect(storage) { loadedGame = storage.load() }
+    val game = loadedGame ?: run {
+        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     fun update(next: TileMergeState) {
-        game = next
+        loadedGame = next
         storage.save(next)
     }
 
