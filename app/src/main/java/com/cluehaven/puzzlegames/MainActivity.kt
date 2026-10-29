@@ -52,6 +52,7 @@ import com.cluehaven.puzzlegames.ui.theme.Gold
 import com.cluehaven.puzzlegames.ui.theme.Mint
 import com.cluehaven.puzzlegames.ui.theme.Teal
 import com.cluehaven.puzzlegames.game.tilemerge.TileMergeScreen
+import com.cluehaven.puzzlegames.game.sudoku.SudokuScreen
 import com.cluehaven.puzzlegames.data.AppSettings
 import com.cluehaven.puzzlegames.data.SettingsRepository
 import kotlinx.coroutines.launch
@@ -131,6 +132,7 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
         },
     ) { padding ->
         when {
+            route == "sudoku" -> SudokuScreen(padding) { route = "home" }
             route == "tile_merge" -> TileMergeScreen(padding) { route = "home" }
             selectedGame != null -> GameInfoScreen(selectedGame, padding) { route = "home" }
             route == "progress" -> SimpleScreen(
