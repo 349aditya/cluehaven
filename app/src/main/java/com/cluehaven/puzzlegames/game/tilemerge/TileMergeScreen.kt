@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,9 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -63,7 +62,6 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -84,9 +82,12 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
             ScoreCard("BEST", game.bestScore, Modifier.weight(1f))
         }
 
-        Box(
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+            val boardSize = minOf(maxWidth, maxHeight)
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .size(boardSize)
+                    .align(Alignment.Center)
                     .background(Color(0xFFD8DED8), RoundedCornerShape(18.dp))
                     .padding(7.dp)
                     .pointerInput(game) {
@@ -147,6 +148,7 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
                     }
                 }
             }
+        }
 
         Text(
             when {
