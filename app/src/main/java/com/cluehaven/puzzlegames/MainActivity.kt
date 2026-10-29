@@ -47,6 +47,7 @@ import com.cluehaven.puzzlegames.ui.theme.Cream
 import com.cluehaven.puzzlegames.ui.theme.Gold
 import com.cluehaven.puzzlegames.ui.theme.Mint
 import com.cluehaven.puzzlegames.ui.theme.Teal
+import com.cluehaven.puzzlegames.game.tilemerge.TileMergeScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -114,6 +115,7 @@ private fun CluehavenApp() {
         },
     ) { padding ->
         when {
+            route == "tile_merge" -> TileMergeScreen(padding) { route = "home" }
             selectedGame != null -> GameInfoScreen(selectedGame, padding) { route = "home" }
             route == "progress" -> SimpleScreen(
                 "Progress",
