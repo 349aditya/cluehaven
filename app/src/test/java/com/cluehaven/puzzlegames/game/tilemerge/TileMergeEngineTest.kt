@@ -7,6 +7,47 @@ import org.junit.Test
 
 class TileMergeEngineTest {
     @Test
+    fun oddAndEvenSeedsSpawnApproximatelyTenPercentFours() {
+        for (seed in listOf(1L, 2L, 3L, 42L, Long.MIN_VALUE, Long.MAX_VALUE)) {
+            var rng = seed
+            var fours = 0
+            repeat(10_000) {
+                val start = state(List(15) { 0 } + 2).copy(rngState = rng)
+                val next = TileMergeEngine.move(start, MoveDirection.LEFT)
+                fours += next.board.count { it == 4 }
+                rng = next.rngState
+            }
+            assertTrue("Seed $seed spawned $fours fours", fours in 850..1150)
+        }
+    }
+
+    @Test
+    fun everyEmptyPositionCanReceiveTilesForEitherSeedParity() {
+        for (seed in listOf(1L, 2L)) {
+            var rng = seed
+            val positions = IntArray(16)
+            repeat(10_000) {
+                val next = TileMergeEngine.move(state(List(15) { 0 } + 2).copy(rngState = rng), MoveDirection.LEFT)
+                // The original tile slides left within the bottom row, to cell twelve.
+                positions[next.board.indices.single { it != 12 && next.board[it] != 0 }]++
+                rng = next.rngState
+            }
+            assertTrue("Seed $seed: ${positions.toList()}", (0..15).filter { it != 12 }.all { positions[it] in 400..950 })
+        }
+    }
+
+    @Test
+    fun undoAndReplayProduceExactlyTheSameSpawn() {
+        val start = state(listOf(2, 2, 0, 0) + List(12) { 0 })
+        val first = TileMergeEngine.move(start, MoveDirection.LEFT)
+        val replayed = TileMergeEngine.move(TileMergeEngine.undo(first), MoveDirection.LEFT)
+        assertEquals(first.board, replayed.board)
+        assertEquals(first.rngState, replayed.rngState)
+        assertEquals(first.score, replayed.score)
+        assertEquals(TileMergeEngine.newGame(42), TileMergeEngine.newGame(42))
+    }
+
+    @Test
     fun newGameStartsWithExactlyTwoTiles() {
         val game = TileMergeEngine.newGame(seed = 42L)
         assertEquals(2, game.board.count { it != 0 })

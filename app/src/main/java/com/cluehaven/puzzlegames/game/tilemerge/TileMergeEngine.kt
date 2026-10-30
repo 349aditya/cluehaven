@@ -34,6 +34,16 @@ object TileMergeEngine {
     private const val MULTIPLIER = 6364136223846793005L
     private const val INCREMENT = 1442695040888963407L
 
+    // Scramble the LCG output before sampling: its low bits are strongly correlated,
+    // and advancing twice per spawn otherwise locks the value sample to one parity.
+    private fun sample(state: Long, bound: Int): Int {
+        var bits = state
+        bits = (bits xor (bits ushr 30)) * -4658895280553007687L
+        bits = (bits xor (bits ushr 27)) * -7723592293110705685L
+        bits = bits xor (bits ushr 31)
+        return (bits.toULong() % bound.toULong()).toInt()
+    }
+
     fun newGame(seed: Long = System.nanoTime(), bestScore: Int = 0): TileMergeState {
         val board = MutableList(16) { 0 }
         val afterFirst = spawnTile(board, seed)
@@ -126,9 +136,9 @@ object TileMergeEngine {
         val empty = board.indices.filter { board[it] == 0 }
         if (empty.isEmpty()) return seed
         val positionState = seed * MULTIPLIER + INCREMENT
-        val position = empty[(positionState.toULong() % empty.size.toULong()).toInt()]
+        val position = empty[sample(positionState, empty.size)]
         val valueState = positionState * MULTIPLIER + INCREMENT
-        board[position] = if (valueState.toULong() % 10uL == 0uL) 4 else 2
+        board[position] = if (sample(valueState, 10) == 0) 4 else 2
         return valueState
     }
 }
