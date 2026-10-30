@@ -4,7 +4,7 @@ Early development build with Sudoku, Tile Merge (2048-style), Nonogram, and Pipe
 
 ## Current build
 
-- Block Garden engine: an 8×8 board with 31 fixed-orientation shapes, three-piece trays, simultaneous row/column clears, consecutive-clear combo bonuses, and one undo per run. Fresh trays have at least one legal placement sequence; larger shapes enter after nine placements.
+- Block Garden engine: an 8×8 board with 31 fixed-orientation shapes, three-piece trays, simultaneous row/column clears, consecutive-clear combo bonuses, and one undo per run. Fresh trays have at least one legal placement sequence; larger shapes enter after nine placements. Local saves preserve the board, remaining tray, random state, score, best score, and undo snapshot across restarts.
 
 - Pipe Connect now follows the approved board design: broad curved pipes that meet across softly rounded tiles, teal connected paths, muted disconnected paths, a gold source, coral endpoints, a continuous progress bar, and actions grouped below the board. Its timer sits beside the connection count. Both board sizes support light/dark appearance and reduced motion; generation, rotation rules, hints, undo, and saves are unchanged.
 
