@@ -4,6 +4,8 @@ Early development build with Sudoku, Tile Merge (2048-style), Nonogram, and Pipe
 
 ## Current build
 
+- Block Garden engine: an 8×8 board with 31 fixed-orientation shapes, three-piece trays, simultaneous row/column clears, consecutive-clear combo bonuses, and one undo per run. Fresh trays have at least one legal placement sequence; larger shapes enter after nine placements.
+
 - Pipe Connect now follows the approved board design: broad curved pipes that meet across softly rounded tiles, teal connected paths, muted disconnected paths, a gold source, coral endpoints, a continuous progress bar, and actions grouped below the board. Its timer sits beside the connection count. Both board sizes support light/dark appearance and reduced motion; generation, rotation rules, hints, undo, and saves are unchanged.
 
 - All four games have persistent active-play timers. Time pauses when leaving the board, backgrounding the app, or opening a new-run/ad flow; normal exits save immediately and active play checkpoints every five seconds. Tile Merge times the full run until game over, and undo reopens that same run. Progress includes dated, filterable completion history and fastest unassisted puzzle times by difficulty/size, alongside Tile Merge's best score. Assisted and older partially timed saves stay in history but do not qualify for fastest times. Database v3 preserves existing boards and imports surviving older completions without inventing elapsed times; replaced old boards cannot be recovered.
