@@ -15,7 +15,8 @@ import com.cluehaven.puzzlegames.data.*
 import kotlinx.coroutines.delay
 
 @Composable
-fun PlayTimerLine(initial: PlayRecord, previouslyPlayed: Boolean, finished: Boolean, paused: Boolean = false) {
+fun PlayTimerLine(initial: PlayRecord, previouslyPlayed: Boolean, finished: Boolean, modifier: Modifier = Modifier,
+    paused: Boolean = false, alignment: Arrangement.Horizontal = Arrangement.Center) {
     val context = LocalContext.current
     val repository = remember(context) { PlayRecordRepository.get(context) }
     val owner = remember(context) {
@@ -63,7 +64,7 @@ fun PlayTimerLine(initial: PlayRecord, previouslyPlayed: Boolean, finished: Bool
         !foreground || paused -> "Paused · ${formatPlayTime(elapsed)}"
         else -> "Time · ${formatPlayTime(elapsed)}"
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = alignment, verticalAlignment = Alignment.CenterVertically) {
         Text(label + if (initial.hintsUsed > 0) " · Assisted" else "",
             Modifier.padding(vertical = 2.dp).semantics { contentDescription = label },
             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

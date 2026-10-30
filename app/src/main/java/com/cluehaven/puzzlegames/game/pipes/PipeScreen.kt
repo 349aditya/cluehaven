@@ -7,11 +7,10 @@ import androidx.compose.animation.core.tween
 import com.cluehaven.puzzlegames.ui.theme.Gold
 import com.cluehaven.puzzlegames.ui.theme.Coral
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,7 +18,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -66,32 +75,8 @@ fun PipeScreen(padding: PaddingValues, initialSize: Int = 0, goBack: () -> Unit)
             }
         }
     } else if (current == null) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-    else {
-        val connected = remember(current.tiles) { PipeEngine.connected(current.size, current.tiles) }
-        PuzzlePage(padding, "Pipe Connect", { boardSize = 0 }, footer = {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PuzzleAction("Undo", "undo", Modifier.weight(1f), enabled = current.history.isNotEmpty() && !current.isComplete) {
-                    update(PipeEngine.undo(current))
-                }
-                PuzzleAction("Hint", "hint", Modifier.weight(1f), enabled = current.hintsUsed == 0 && !current.isComplete) {
-                    update(PipeEngine.hint(current))
-                }
-                PuzzleAction("New", "new", Modifier.weight(1f), primary = true) { restart = true }
-            }
-        }) {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                StatusPill("${current.size}×${current.size} · ${current.moves} rotations")
-            }
-            PlayTimerLine(current.playRecord(), current.moves > 0 || current.hintsUsed > 0 || current.history.isNotEmpty(),
-                current.isComplete, paused = restart)
-            PipeBoard(current, ::update)
-            Text("${connected.size} / ${current.tiles.size} connected", style = MaterialTheme.typography.labelMedium)
-            LinearProgressIndicator(progress = { connected.size.toFloat() / current.tiles.size },
-                modifier = Modifier.fillMaxWidth().height(8.dp), strokeCap = StrokeCap.Round,
-                trackColor = MaterialTheme.colorScheme.outlineVariant)
-            if (current.isComplete) CompletionCard("Network complete!", "Every pipe is connected.", "New network") { restart = true }
-        }
-    }
+    else PipePlay(current, padding, restart, back = { boardSize = 0 }, update = ::update,
+        newBoard = { restart = true })
     if (restart) AlertDialog(onDismissRequest = { restart = false }, title = { Text("Generate a new network?") },
         text = { Text("This replaces your current board for this size.") },
         confirmButton = { TextButton(onClick = {
@@ -101,45 +86,135 @@ fun PipeScreen(padding: PaddingValues, initialSize: Int = 0, goBack: () -> Unit)
 }
 
 @Composable
+private fun PipePlay(current: PipeState, padding: PaddingValues, paused: Boolean,
+    back: () -> Unit, update: (PipeState) -> Unit, newBoard: () -> Unit) {
+    val connected = remember(current.tiles) { PipeEngine.connected(current.size, current.tiles) }
+    Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
+        .padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.widthIn(max = 520.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            GameHeader("Pipe Connect", back)
+            StatusPill("${current.size}×${current.size} · ${current.moves} rotations")
+            PipeBoard(current, update)
+            Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${connected.size} / ${current.tiles.size} connected", style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold)
+                    PlayTimerLine(current.playRecord(), current.moves > 0 || current.hintsUsed > 0 || current.history.isNotEmpty(),
+                        current.isComplete, paused = paused, modifier = Modifier.weight(1f), alignment = Arrangement.End)
+                }
+                val dark = MaterialTheme.colorScheme.background.luminance() < .5f
+                // A continuous bar matches the reference, without Material's stop dot and gap.
+                Canvas(Modifier.fillMaxWidth().height(9.dp).semantics {
+                    contentDescription = "${connected.size} of ${current.tiles.size} pipes connected"
+                }) {
+                    val radius = CornerRadius(size.height / 2)
+                    drawRoundRect(if (dark) Color(0xFF33544F) else Color(0xFFDDDDD5), cornerRadius = radius)
+                    drawRoundRect(Brush.horizontalGradient(listOf(Color(0xFF15978D), Color(0xFF32A18C))),
+                        size = Size(size.width * connected.size / current.tiles.size, size.height), cornerRadius = radius)
+                }
+            }
+            if (current.isComplete) CompletionCard("Network complete!", "Every pipe is connected.", "New network", newBoard)
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PuzzleAction("Undo", "undo", Modifier.weight(1f), enabled = current.history.isNotEmpty() && !current.isComplete) {
+                    update(PipeEngine.undo(current))
+                }
+                PuzzleAction("Hint", "hint", Modifier.weight(1f), enabled = current.hintsUsed == 0 && !current.isComplete) {
+                    update(PipeEngine.hint(current))
+                }
+                PuzzleAction("New", "undo", Modifier.weight(1f), primary = true, onClick = newBoard)
+            }
+        }
+    }
+}
+
+@Composable
 private fun PipeBoard(current: PipeState, update: (PipeState) -> Unit) {
     val connected = remember(current.tiles) { PipeEngine.connected(current.size, current.tiles) }
-            val activeColor = MaterialTheme.colorScheme.primary
-            val inactiveColor = MaterialTheme.colorScheme.outline
-            Column(Modifier.widthIn(max = 520.dp).fillMaxWidth()) {
-                repeat(current.size) { row ->
-                    Row {
-                        repeat(current.size) { column ->
-                            val index = row * current.size + column
-                            val mask = current.tiles[index]
-                            val color by animateColorAsState(if (index in connected) activeColor else inactiveColor,
-                                tween(if (LocalReducedMotion.current) 0 else 200), label = "Pipe connection")
-                            val ports = listOf("north", "east", "south", "west").filterIndexed { d, _ -> mask and (1 shl d) != 0 }
-                            Box(Modifier.weight(1f).aspectRatio(1f).padding(1.dp)
-                                .background(if (index == 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
-                                .border(0.5.dp, MaterialTheme.colorScheme.outline)
-                                .clickable(enabled = !current.isComplete) { update(PipeEngine.turn(current, index)) }
-                                .semantics { contentDescription = "Row ${row + 1}, column ${column + 1}, " +
-                                    "ports ${ports.joinToString()}, " + (if (index in connected) "connected" else "disconnected") +
-                                    if (index == 0) ", source" else "" }) {
-                                Canvas(Modifier.fillMaxSize().padding(4.dp)) {
-                                    val center = Offset(size.width / 2, size.height / 2)
-                                    val ends = listOf(Offset(center.x, -4.dp.toPx()), Offset(size.width + 4.dp.toPx(), center.y),
-                                        Offset(center.x, size.height + 4.dp.toPx()), Offset(-4.dp.toPx(), center.y))
-                                    repeat(4) { d -> if (mask and (1 shl d) != 0)
-                                        drawLine(color, center, ends[d], 10.dp.toPx(), StrokeCap.Butt) }
-                                    drawCircle(if (index == 0) Gold else color, if (index == 0) 8.dp.toPx() else 5.dp.toPx(), center)
-                                    repeat(4) { d ->
-                                        val next = PipeEngine.neighbor(current.size, index, d)
-                                        if (mask and (1 shl d) != 0 &&
-                                            (next == null || current.tiles[next] and (1 shl ((d + 2) % 4)) == 0)) {
-                                            drawCircle(Coral, 3.dp.toPx(), center + (ends[d] - center) * .73f)
-                                        }
-                                    }
-                                }
+    val dark = MaterialTheme.colorScheme.background.luminance() < .5f
+    val active = if (dark) Color(0xFF42BDB3) else Color(0xFF087D7B)
+    val inactive = if (dark) Color(0xFF668080) else Color(0xFFA5AFAA)
+    val tile = if (dark) Color(0xFF203E43) else Color(0xFFF0EDE4)
+    val border = if (dark) Color(0xFF53726F) else Color(0xFFB4BDB5)
+    val source = if (dark) Color(0xFF315D56) else Color(0xFFD1EBDF)
+    Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp))) {
+        Canvas(Modifier.matchParentSize()) {
+            val unit = size.width / current.size
+            current.tiles.indices.forEach { index ->
+                val origin = Offset(index % current.size * unit, index / current.size * unit)
+                val inset = .7.dp.toPx()
+                val tileSize = Size(unit - inset * 2, unit - inset * 2)
+                val corner = CornerRadius(3.dp.toPx())
+                drawRoundRect(Brush.linearGradient(listOf(tile, tile.copy(alpha = .85f)), origin, origin + Offset(unit, unit)),
+                    origin + Offset(inset, inset), tileSize, corner)
+                if (index == 0) drawRoundRect(source, origin + Offset(inset, inset), tileSize, corner)
+                drawRoundRect(if (index == 0) active.copy(alpha = .7f) else border.copy(alpha = .7f),
+                    origin + Offset(inset, inset), tileSize, corner, style = Stroke(.65.dp.toPx()))
+            }
+        }
+        // Full-size cells let matching ports meet exactly across tile boundaries.
+        Column(Modifier.fillMaxSize()) {
+            repeat(current.size) { row ->
+                Row(Modifier.weight(1f)) {
+                    repeat(current.size) { column ->
+                        val index = row * current.size + column
+                        val mask = current.tiles[index]
+                        val color by animateColorAsState(if (index in connected) active else inactive,
+                            tween(if (LocalReducedMotion.current) 0 else 200), label = "Pipe connection")
+                        val ports = listOf("north", "east", "south", "west").filterIndexed { d, _ -> mask and (1 shl d) != 0 }
+                        Canvas(Modifier.weight(1f).fillMaxHeight()
+                            .clickable(enabled = !current.isComplete) { update(PipeEngine.turn(current, index)) }
+                            .semantics { contentDescription = "Row ${row + 1}, column ${column + 1}, " +
+                                "ports ${ports.joinToString()}, " + (if (index in connected) "connected" else "disconnected") +
+                                when { index == 0 -> ", source"; Integer.bitCount(mask) == 1 -> ", endpoint"; else -> "" } }) {
+                            drawPipe(mask, color)
+                            if (index == 0 || Integer.bitCount(mask) == 1) {
+                                val radius = size.minDimension * .23f
+                                drawCircle(if (index == 0) Color(0xFF174B4E) else tile, radius + 1.dp.toPx())
+                                drawCircle(if (index == 0) Gold else Coral, radius)
+                                drawCircle(Color.White.copy(alpha = .45f), radius * .2f,
+                                    center - Offset(radius * .3f, radius * .35f))
                             }
                         }
                     }
                 }
             }
+        }
+        Canvas(Modifier.matchParentSize()) {
+            drawRoundRect(border, cornerRadius = CornerRadius(8.dp.toPx()), style = Stroke(1.dp.toPx()))
+        }
+    }
+}
 
+private fun DrawScope.drawPipe(mask: Int, color: Color) {
+    val vectors = listOf(Offset(0f, -1f), Offset(1f, 0f), Offset(0f, 1f), Offset(-1f, 0f))
+    val directions = (0..3).filter { mask and (1 shl it) != 0 }
+    val half = size.minDimension / 2
+    val width = size.minDimension * .34f
+    val brush = Brush.linearGradient(listOf(color.copy(red = color.red * .85f, green = color.green * .85f,
+        blue = color.blue * .85f), color, color), Offset.Zero, Offset(size.width, size.height))
+    fun edge(direction: Int) = center + vectors[direction] * half
+    if (directions.size == 2) {
+        val a = directions[0]
+        val b = directions[1]
+        val path = Path().apply {
+            moveTo(edge(a).x, edge(a).y)
+            if ((a + 2) % 4 == b) lineTo(edge(b).x, edge(b).y)
+            else {
+                val radius = size.minDimension * .28f
+                val start = center + vectors[a] * radius
+                val end = center + vectors[b] * radius
+                val controlA = start - vectors[a] * (radius * .5522848f)
+                val controlB = end - vectors[b] * (radius * .5522848f)
+                lineTo(start.x, start.y)
+                cubicTo(controlA.x, controlA.y, controlB.x, controlB.y, end.x, end.y)
+                lineTo(edge(b).x, edge(b).y)
+            }
+        }
+        drawPath(path, brush, style = Stroke(width, cap = StrokeCap.Butt, join = StrokeJoin.Round))
+    } else {
+        directions.forEach { drawLine(brush, center, edge(it), width, StrokeCap.Butt) }
+        if (directions.isNotEmpty()) drawCircle(brush, width / 2)
+    }
 }
