@@ -61,6 +61,7 @@ import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
 import com.cluehaven.puzzlegames.ui.progress.ProgressScreen
 import com.cluehaven.puzzlegames.game.pipes.PipeScreen
 import com.cluehaven.puzzlegames.game.nonogram.NonogramScreen
+import com.cluehaven.puzzlegames.ui.home.PipeArtwork
 import com.cluehaven.puzzlegames.ui.home.NonogramArtwork
 import kotlinx.coroutines.launch
 
@@ -296,7 +297,7 @@ private fun GameCard(game: Game, modifier: Modifier, onClick: () -> Unit) {
                     "sudoku" -> SudokuArtwork(96.dp)
                     "tile_merge" -> TileMergeArtwork(96.dp)
                     "nonogram" -> NonogramArtwork(96.dp)
-                    "pipes" -> Text("╋", fontSize = 80.sp, color = Teal)
+                    "pipes" -> PipeArtwork(96.dp)
                 }
             }
             Column {

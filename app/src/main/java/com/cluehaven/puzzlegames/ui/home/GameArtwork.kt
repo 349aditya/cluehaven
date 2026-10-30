@@ -150,3 +150,39 @@ fun NonogramArtwork(size: Dp) {
         }
     }
 }
+
+
+@Composable
+fun PipeArtwork(dimension: Dp) {
+    Canvas(Modifier.size(dimension).clearAndSetSemantics { }) {
+        val unit = size.minDimension / 100f
+        val board = Size(96 * unit, 94 * unit)
+        drawRoundRect(DarkTeal.copy(alpha = 0.14f), Offset(2 * unit, 6 * unit),
+            board, CornerRadius(13 * unit))
+        drawRoundRect(DarkTeal, Offset(2 * unit, 2 * unit), board, CornerRadius(13 * unit))
+        repeat(3) { row ->
+            repeat(3) { column ->
+                drawRoundRect(Color(0xFFEAF4EF),
+                    Offset((8 + column * 29) * unit, (8 + row * 29) * unit),
+                    Size(26 * unit, 26 * unit), CornerRadius(5 * unit))
+            }
+        }
+        fun center(index: Int) = Offset((21 + index % 3 * 29) * unit,
+            (21 + index / 3 * 29) * unit)
+        val route = listOf(0, 1, 4, 3, 6, 7, 8, 5, 2)
+        val pipe = Path().apply {
+            moveTo(center(0).x, center(0).y)
+            route.drop(1).forEach { lineTo(center(it).x, center(it).y) }
+        }
+        drawPath(pipe, DarkTeal, style = Stroke(11 * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(pipe, Teal, style = Stroke(7 * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(pipe, Color.White.copy(alpha = 0.35f),
+            style = Stroke(2 * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        listOf(0 to Gold, 2 to Coral).forEach { (index, color) ->
+            drawCircle(DarkTeal, 9 * unit, center(index))
+            drawCircle(color, 6 * unit, center(index))
+            drawCircle(Color.White.copy(alpha = 0.8f), 2 * unit,
+                center(index) - Offset(1.5f * unit, 1.5f * unit))
+        }
+    }
+}
