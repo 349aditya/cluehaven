@@ -1,5 +1,6 @@
 package com.cluehaven.puzzlegames.game.sudoku
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +51,11 @@ import com.cluehaven.puzzlegames.ui.theme.Teal
 import java.time.LocalDate
 
 @Composable
-fun SudokuScreen(padding: PaddingValues, goBack: () -> Unit) {
+fun SudokuScreen(
+    padding: PaddingValues,
+    goBack: () -> Unit,
+    openDailyOnStart: Boolean = false,
+) {
     val context = LocalContext.current
     val storage = remember(context) { SudokuStorage.get(context) }
     val today = remember { LocalDate.now() }
@@ -60,16 +66,45 @@ fun SudokuScreen(padding: PaddingValues, goBack: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var pendingDifficulty by remember { mutableStateOf<SudokuDifficulty?>(null) }
     var showSolved by remember { mutableStateOf(false) }
+    var activeMode by rememberSaveable { mutableStateOf(if (openDailyOnStart) "daily" else "") }
+
+    BackHandler {
+        when {
+            pendingDifficulty != null -> pendingDifficulty = null
+            showSolved -> showSolved = false
+            game != null -> { game = null; activeMode = "" }
+            else -> goBack()
+        }
+    }
 
     LaunchedEffect(storage, today) {
         freeSave = storage.load(SudokuStorage.FREE_KEY)
         dailySave = storage.load("sudoku_$dailyId")
+        when (activeMode) {
+            "free" -> game = freeSave
+            "daily" -> {
+                val existing = dailySave
+                if (existing != null) game = existing
+                else {
+                    val created = SudokuState(
+                        SudokuEngine.generate(
+                            SudokuDifficulty.MEDIUM, today.toEpochDay(), dailyId,
+                        ),
+                        SudokuMode.DAILY,
+                    )
+                    game = created
+                    dailySave = created
+                    storage.save(created)
+                }
+            }
+        }
         loading = false
     }
 
     fun update(next: SudokuState) {
         val wasComplete = game?.isComplete == true
         game = next
+        activeMode = if (next.mode == SudokuMode.FREE) "free" else "daily"
         storage.save(next)
         if (next.mode == SudokuMode.FREE) freeSave = next else dailySave = next
         if (!wasComplete && next.isComplete) showSolved = true
@@ -90,10 +125,10 @@ fun SudokuScreen(padding: PaddingValues, goBack: () -> Unit) {
             freeSave = freeSave,
             dailySave = dailySave,
             goBack = goBack,
-            continueFree = { game = freeSave },
+            continueFree = { game = freeSave; activeMode = "free" },
             openDaily = {
                 val existing = dailySave
-                if (existing != null) game = existing
+                if (existing != null) { game = existing; activeMode = "daily" }
                 else update(SudokuState(
                     SudokuEngine.generate(SudokuDifficulty.MEDIUM, today.toEpochDay(), dailyId),
                     SudokuMode.DAILY,
@@ -107,7 +142,7 @@ fun SudokuScreen(padding: PaddingValues, goBack: () -> Unit) {
         else -> SudokuPlay(
             state = current,
             padding = padding,
-            goBack = { game = null },
+            goBack = { game = null; activeMode = "" },
             update = ::update,
         )
     }
@@ -131,7 +166,11 @@ fun SudokuScreen(padding: PaddingValues, goBack: () -> Unit) {
             onDismissRequest = { showSolved = false },
             title = { Text("Sudoku complete!") },
             text = { Text("Nice work. Your solved board is saved on this device.") },
-            confirmButton = { TextButton(onClick = { showSolved = false; game = null }) {
+            confirmButton = { TextButton(onClick = {
+                showSolved = false
+                game = null
+                activeMode = ""
+            }) {
                 Text("Choose another")
             } },
             dismissButton = { TextButton(onClick = { showSolved = false }) {
@@ -325,7 +364,7 @@ private fun SudokuBoard(state: SudokuState, modifier: Modifier, select: (Int) ->
                                                 Box(Modifier.weight(1f).fillMaxHeight(),
                                                     contentAlignment = Alignment.Center) {
                                                     if (state.notes[index] and (1 shl digit) != 0) {
-                                                        Text("$digit", fontSize = 8.sp, color = Teal)
+                                                        Text("$digit", fontSize = 8.sp, color = gridColor)
                                                     }
                                                 }
                                             }

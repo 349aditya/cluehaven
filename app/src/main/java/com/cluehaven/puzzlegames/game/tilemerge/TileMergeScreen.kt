@@ -1,5 +1,6 @@
 package com.cluehaven.puzzlegames.game.tilemerge
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +55,10 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
     val storage = remember(context) { TileMergeStorage.get(context) }
     var loadedGame by remember(storage) { mutableStateOf<TileMergeState?>(null) }
     var showRestartDialog by remember { mutableStateOf(false) }
+
+    BackHandler {
+        if (showRestartDialog) showRestartDialog = false else goBack()
+    }
 
     LaunchedEffect(storage) { loadedGame = storage.load() }
     val game = loadedGame ?: run {

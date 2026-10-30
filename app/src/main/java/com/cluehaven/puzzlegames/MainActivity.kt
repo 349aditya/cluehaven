@@ -3,6 +3,7 @@ package com.cluehaven.puzzlegames
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -91,13 +92,19 @@ private val games = listOf(
 private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
     var route by rememberSaveable { mutableStateOf("home") }
     val visibleRoute = route.takeIf {
-        it == "home" || it == "progress" || it == "settings" || games.any { game -> game.id == it }
+        it == "home" || it == "progress" || it == "settings" || it == "sudoku_daily" ||
+            games.any { game -> game.id == it }
     } ?: "home"
+
+    BackHandler(enabled = visibleRoute == "progress" || visibleRoute == "settings") {
+        route = "home"
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (visibleRoute != "sudoku" && visibleRoute != "tile_merge") {
+            if (visibleRoute != "sudoku" && visibleRoute != "sudoku_daily" &&
+                visibleRoute != "tile_merge") {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     listOf("home" to "Home", "progress" to "Progress", "settings" to "Settings")
                         .forEach { (id, label) ->
@@ -127,7 +134,15 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
         },
     ) { padding ->
         when {
-            visibleRoute == "sudoku" -> SudokuScreen(padding) { route = "home" }
+            visibleRoute == "sudoku" -> SudokuScreen(
+                padding = padding,
+                goBack = { route = "home" },
+            )
+            visibleRoute == "sudoku_daily" -> SudokuScreen(
+                padding = padding,
+                goBack = { route = "home" },
+                openDailyOnStart = true,
+            )
             visibleRoute == "tile_merge" -> TileMergeScreen(padding) { route = "home" }
             visibleRoute == "progress" -> SimpleScreen(
                 "Progress",
@@ -196,7 +211,9 @@ private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
                     style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text("A fresh Sudoku challenge, at your pace", color = Color(0xFFD8E8E3),
                     style = MaterialTheme.typography.bodySmall)
-                DailyCard("Sudoku", "Daily grid", Modifier.fillMaxWidth()) { openGame("sudoku") }
+                DailyCard("Sudoku", "Daily grid", Modifier.fillMaxWidth()) {
+                    openGame("sudoku_daily")
+                }
             }
         }
 
