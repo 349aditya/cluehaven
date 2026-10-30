@@ -57,6 +57,7 @@ import com.cluehaven.puzzlegames.ui.theme.DarkTeal
 import com.cluehaven.puzzlegames.ui.theme.Mint
 import com.cluehaven.puzzlegames.ui.theme.Teal
 import com.cluehaven.puzzlegames.data.ProgressRepository
+import com.cluehaven.puzzlegames.data.playRecord
 import java.time.LocalDate
 
 @Composable
@@ -243,6 +244,7 @@ private fun SudokuPlay(
     update: (SudokuState) -> Unit,
     today: LocalDate,
 ) {
+    val timerRecord = state.playRecord()
     PuzzlePage(padding, "Sudoku", goBack, footer = {
         Row(Modifier.fillMaxWidth()) {
             ToolButton("Notes", "notes", Modifier.weight(1f), enabled = !state.isComplete, selected = state.noteMode) {
@@ -264,6 +266,8 @@ private fun SudokuPlay(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary)
         }
+        PlayTimerLine(timerRecord, state.values != state.puzzle.givens || state.notes.any { it != 0 } || state.hintsUsed > 0,
+            state.isComplete)
         SudokuBoard(state, Modifier.widthIn(max = 460.dp).fillMaxWidth().aspectRatio(1f)) {
             update(SudokuEngine.select(state, it))
         }

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import java.time.LocalDate
+import com.cluehaven.puzzlegames.data.playRecord
 
 @Composable
 fun NonogramScreen(padding: PaddingValues, initialId: String? = null, goBack: () -> Unit) {
@@ -154,6 +155,7 @@ private fun NonogramPlay(state: NonogramState, padding: PaddingValues, cross: Bo
             StatusPill("${state.puzzle.size}×${state.puzzle.size} · " +
                 if (state.puzzle.id.startsWith("daily-")) "Daily" else "Picture ${state.puzzle.number} · ${state.puzzle.difficulty.label}")
         }
+        PlayTimerLine(state.playRecord(), state.cells.any { it != 0 } || state.hintsUsed > 0, state.isComplete)
         NonogramBoard(state, selected, mark)
         if (state.isComplete) CompletionCard("${state.puzzle.title} complete!", "Your progress is saved.", "Choose another", back)
         else {

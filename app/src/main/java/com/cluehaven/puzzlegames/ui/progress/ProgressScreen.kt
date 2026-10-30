@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,11 +23,16 @@ import com.cluehaven.puzzlegames.ui.home.*
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun ProgressScreen(padding: PaddingValues) {
     val context = LocalContext.current
     val progress = remember { ProgressRepository.get(context) }
+    val records = remember { PlayRecordRepository.get(context) }
+    val history by records.history.collectAsState(initial = emptyList())
     val nonogramStorage = remember { NonogramStorage.get(context) }
     val completions by progress.sudokuCompletions.collectAsState(initial = emptyList())
     val milestones by progress.tileMilestones.collectAsState(initial = emptyList())
@@ -80,11 +86,66 @@ fun ProgressScreen(padding: PaddingValues) {
             ProgressCard("Nonogram", Modifier.weight(1f), { NonogramArtwork(38.dp) },
                 "${nonogram.starterSolved} / ${NonogramEngine.puzzles.size}", "pack puzzles solved", "${nonogram.dailySolved} daily pictures")
             ProgressCard("Pipe Connect", Modifier.weight(1f), { PipeArtwork(38.dp) },
-                "${pipes.count { it.isComplete }} / 2", "saved boards complete",
-                "${pipes.sumOf { it.moves }} rotations on saved boards")
+                history.count { it.game == "Pipe Connect" }.toString(), "networks solved",
+                "${pipes.count { it.isComplete }} completed boards saved")
         }
-        Text("Saved on this device · Pipe Connect shows your two current boards.",
+        PersonalBestSection(history)
+        CompletionHistory(history)
+        Text("Saved on this device. Older results without a full timer are excluded from fastest times. Older board dates reflect their last save.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun PersonalBestSection(history: List<PlayRecord>) {
+    val bests = remember(history) { personalBests(history) }
+    Text("Personal bests", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Fastest unassisted solves", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (bests.isEmpty()) Text("Complete a new puzzle without hints to set your first time.", style = MaterialTheme.typography.bodySmall)
+            bests.forEach { best ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("${best.game} · ${best.category}", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                    Text(formatPlayTime(best.elapsedMillis), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompletionHistory(history: List<PlayRecord>) {
+    var game by remember { mutableStateOf("All") }
+    var limit by remember(game) { mutableIntStateOf(10) }
+    val filtered = history.filter { game == "All" || it.game == game }
+    val dateFormat = remember { DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale.getDefault()) }
+    Text("Completion history", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf("All", "Sudoku", "Tile Merge", "Nonogram", "Pipe Connect").forEach { name ->
+            FilterChip(selected = name == game, onClick = { game = name }, label = { Text(name) })
+        }
+    }
+    if (filtered.isEmpty()) Text("Your completed puzzles and finished Tile Merge runs will appear here.",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    filtered.take(limit).forEach { record ->
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("${record.game} · ${record.category}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                Text(record.title, style = MaterialTheme.typography.bodySmall)
+                Text(if (record.game == "Tile Merge") "Score ${record.score} · " +
+                    if (record.timeKnown) formatPlayTime(record.elapsedMillis) else "Time unavailable"
+                    else (if (record.timeKnown) formatPlayTime(record.elapsedMillis) else "Time unavailable") +
+                        if (record.hintsUsed > 0) " · Assisted (${record.hintsUsed} hint)" else " · No hints",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Text(dateFormat.format(Instant.ofEpochMilli(record.completedAt!!).atZone(ZoneId.systemDefault())),
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+    if (filtered.size > limit) OutlinedButton(onClick = { limit += 10 }, modifier = Modifier.fillMaxWidth()) {
+        Text("Show more (${filtered.size - limit} remaining)")
     }
 }
 

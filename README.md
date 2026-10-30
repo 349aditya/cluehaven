@@ -4,13 +4,15 @@ Early development build with Sudoku, Tile Merge (2048-style), Nonogram, and Pipe
 
 ## Current build
 
+- All four games have persistent active-play timers. Time pauses when leaving the board, backgrounding the app, or opening a new-run/ad flow; normal exits save immediately and active play checkpoints every five seconds. Tile Merge times the full run until game over, and undo reopens that same run. Progress includes dated, filterable completion history and fastest unassisted puzzle times by difficulty/size, alongside Tile Merge's best score. Assisted and older partially timed saves stay in history but do not qualify for fastest times. Database v3 preserves existing boards and imports surviving older completions without inventing elapsed times; replaced old boards cannot be recovered.
+
 - Tile Merge samples scrambled random output for tile positions and the 90% two / 10% four distribution, including saved runs. Undo keeps deterministic replay. Sudoku refreshes the daily selection at local midnight, on resume, and after clock/timezone changes; an already open board stays intact and shows its original daily date.
 
 - Reference-matched visual pass: centered game titles, compact typography and home grid, house-and-leaf brand mark, warm card surfaces without default purple tints, rectangular action controls, bottom toolbars, and a three-column Nonogram chooser. Reviewed screenshots from the connected phone are in `output/ui-review/`.
 - Settings includes working sound effects (Android system tap feedback), haptics, and reduced motion. Saved appearance and puzzle state are preserved when installing an update.
 
 - Refreshed UI: warm ivory and teal themes, shared game headers, compact home cards, and a Continue card that opens the latest unfinished saved board. Appearance supports System, Light, and Dark with legacy preferences preserved; reduced motion disables connection and tile color transitions.
-- Sudoku highlights the selected box and matching digits, with a larger two-row number pad for 9×9 boards. Nonogram has size filters, saved-board previews, active row/column highlighting, and clue-match colors. Pipe Connect shows a gold source, coral open ends, and connection progress. Progress displays real statistics for all four games; Pipe Connect reflects its two current saved boards.
+- Sudoku highlights the selected box and matching digits, with a larger two-row number pad for 9×9 boards. Nonogram has size filters, saved-board previews, active row/column highlighting, and clue-match colors. Pipe Connect shows a gold source, coral open ends, and connection progress. Progress displays real statistics for all four games, including a persistent count of completed Pipe Connect networks.
 
 - Pipe Connect: generated 4×4 and 6×6 networks, clockwise tile rotation, source-connected highlighting, undo, one free hint, and independent save/resume for each size. Connect every tile with no leaking ends; new puzzles replace the current board only after confirmation.
 

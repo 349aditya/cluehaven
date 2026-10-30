@@ -23,6 +23,9 @@ data class PuzzleSession(
 
 @Dao
 interface PuzzleSessionDao {
+    @Query("SELECT * FROM puzzle_sessions")
+    suspend fun all(): List<PuzzleSession>
+
     @Query("SELECT * FROM puzzle_sessions ORDER BY updatedAt DESC")
     fun observeSessions(): Flow<List<PuzzleSession>>
     @Query("SELECT * FROM puzzle_sessions WHERE gameId = :gameId LIMIT 1")
@@ -70,16 +73,35 @@ interface ProgressDao {
 }
 
 @Database(
-    entities = [PuzzleSession::class, SudokuCompletion::class, TileMergeMilestone::class],
-    version = 2,
+    entities = [PuzzleSession::class, SudokuCompletion::class, TileMergeMilestone::class, PlayRecord::class],
+    version = 3,
     exportSchema = false,
 )
 abstract class CluehavenDatabase : RoomDatabase() {
     abstract fun puzzleSessions(): PuzzleSessionDao
     abstract fun progress(): ProgressDao
+    abstract fun playRecords(): PlayRecordDao
 
     companion object {
         @Volatile private var instance: CluehavenDatabase? = null
+
+        internal val migration2to3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""CREATE TABLE IF NOT EXISTS `play_records` (
+                    `id` TEXT NOT NULL, `game` TEXT NOT NULL, `category` TEXT NOT NULL,
+                    `title` TEXT NOT NULL, `elapsedMillis` INTEGER NOT NULL,
+                    `timeKnown` INTEGER NOT NULL, `completedAt` INTEGER,
+                    `hintsUsed` INTEGER NOT NULL, `score` INTEGER NOT NULL, PRIMARY KEY(`id`))""")
+                db.execSQL("""INSERT OR IGNORE INTO play_records
+                    SELECT 'sudoku_' || puzzleId, 'Sudoku',
+                    CASE difficulty WHEN 'EASY' THEN 'Easy · 6×6' WHEN 'HARD' THEN 'Hard · 9×9' ELSE 'Medium · 9×9' END,
+                    CASE mode WHEN 'DAILY' THEN 'Daily · ' || SUBSTR(puzzleId, 7) ELSE 'Free play' END,
+                    0, 0, completedAt, hintsUsed, 0 FROM sudoku_completions""")
+                db.execSQL("""INSERT OR IGNORE INTO play_records
+                    SELECT 'tile_milestone_' || runId, 'Tile Merge', '2048 milestone', 'Reached 2048',
+                    0, 0, achievedAt, 0, score FROM tile_merge_milestones""")
+            }
+        }
 
         private val migration1to2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -109,7 +131,7 @@ abstract class CluehavenDatabase : RoomDatabase() {
                 context.applicationContext,
                 CluehavenDatabase::class.java,
                 "cluehaven.db",
-            ).addMigrations(migration1to2).build().also { instance = it }
+            ).addMigrations(migration1to2, migration2to3).build().also { instance = it }
         }
     }
 }

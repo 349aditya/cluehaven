@@ -62,6 +62,7 @@ import com.cluehaven.puzzlegames.ui.theme.Gold
 import com.cluehaven.puzzlegames.ui.theme.Mint
 import com.cluehaven.puzzlegames.ui.theme.Teal
 import com.cluehaven.puzzlegames.data.ProgressRepository
+import com.cluehaven.puzzlegames.data.playRecord
 import com.cluehaven.puzzlegames.data.AgeGroup
 import com.cluehaven.puzzlegames.data.AppSettings
 import com.cluehaven.puzzlegames.data.SettingsRepository
@@ -153,6 +154,8 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
             ScoreCard("BEST", game.bestScore, Modifier.weight(1f))
         }
 
+        PlayTimerLine(game.playRecord(), game.moveCount > 0 || game.undosUsed > 0, game.isGameOver,
+            paused = showRestartDialog || showAgePrompt || adLoading)
         BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1f)) {
             val boardSize = minOf(maxWidth, maxHeight)
             Box(

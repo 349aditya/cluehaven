@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.cluehaven.puzzlegames.data.playRecord
 
 @Composable
 fun PipeScreen(padding: PaddingValues, initialSize: Int = 0, goBack: () -> Unit) {
@@ -81,6 +82,8 @@ fun PipeScreen(padding: PaddingValues, initialSize: Int = 0, goBack: () -> Unit)
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 StatusPill("${current.size}×${current.size} · ${current.moves} rotations")
             }
+            PlayTimerLine(current.playRecord(), current.moves > 0 || current.hintsUsed > 0 || current.history.isNotEmpty(),
+                current.isComplete, paused = restart)
             PipeBoard(current, ::update)
             Text("${connected.size} / ${current.tiles.size} connected", style = MaterialTheme.typography.labelMedium)
             LinearProgressIndicator(progress = { connected.size.toFloat() / current.tiles.size },
