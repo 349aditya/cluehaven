@@ -89,9 +89,11 @@ class SudokuStorage private constructor(context: Context) {
             hintsUsed = json.getInt("hintsUsed"),
             history = history,
         )
-        if (listOf(state.values, state.notes, puzzle.givens, puzzle.solution).all { it.size == 81 } &&
-            state.selected in 0..80 && state.hintsUsed in 0..3 &&
-            history.all { it.values.size == 81 && it.notes.size == 81 }
+        val cells = puzzle.givens.size
+        if (cells in setOf(36, 81) &&
+            listOf(state.values, state.notes, puzzle.solution).all { it.size == cells } &&
+            state.selected in 0 until cells && state.hintsUsed in 0..3 &&
+            history.all { it.values.size == cells && it.notes.size == cells }
         ) state else null
     } catch (_: Exception) { null }
 

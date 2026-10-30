@@ -197,7 +197,7 @@ private fun SudokuChooser(
         TextButton(onClick = goBack, contentPadding = PaddingValues(0.dp)) { Text("‹  Back") }
         Text("Sudoku", style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold)
-        Text("Fill every row, column, and 3×3 box with 1–9.",
+        Text("Fill every row, column, and box without repeating a number.",
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Card(
             onClick = openDaily,
@@ -211,14 +211,16 @@ private fun SudokuChooser(
         }
         if (freeSave != null && !freeSave.isComplete) {
             Button(onClick = continueFree, modifier = Modifier.fillMaxWidth()) {
-                Text("Continue ${freeSave.puzzle.difficulty.label()} puzzle")
+                Text("Continue ${freeSave.puzzle.size}×${freeSave.puzzle.size} " +
+                    "${freeSave.puzzle.difficulty.label()} puzzle")
             }
         }
         Text("Free play", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold)
         SudokuDifficulty.entries.forEach { difficulty ->
             OutlinedButton(onClick = { startFree(difficulty) }, modifier = Modifier.fillMaxWidth()) {
-                Text("New ${difficulty.label()} puzzle")
+                Text("New ${difficulty.label()} " +
+                    "${if (difficulty == SudokuDifficulty.EASY) "6×6" else "9×9"} puzzle")
             }
         }
         Text("Puzzles and progress work offline.",
@@ -238,18 +240,19 @@ private fun SudokuPlay(
         Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = goBack, contentPadding = PaddingValues(0.dp)) { Text("‹  Back") }
-            Text("Sudoku", modifier = Modifier.padding(start = 12.dp),
-                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Box(Modifier.fillMaxWidth().height(48.dp)) {
+            TextButton(
+                onClick = goBack,
+                modifier = Modifier.align(Alignment.CenterStart),
+                contentPadding = PaddingValues(0.dp),
+            ) { Text("‹  Back") }
+            Text(
+                "Sudoku",
+                modifier = Modifier.align(Alignment.Center),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
         }
-        Text(
-            "${if (state.mode == SudokuMode.DAILY) "Daily" else "Free play"} · " +
-                state.puzzle.difficulty.label() +
-                if (state.isComplete) " · Complete" else "",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium,
-        )
         BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             val side = minOf(maxWidth, maxHeight)
             SudokuBoard(state, Modifier.size(side).align(Alignment.Center)) { cell ->
@@ -257,7 +260,7 @@ private fun SudokuPlay(
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            (1..9).forEach { digit ->
+            (1..state.puzzle.size).forEach { digit ->
                 Box(
                     Modifier.weight(1f).height(46.dp)
                         .background(Mint.copy(alpha = 0.45f), RoundedCornerShape(7.dp))
@@ -311,18 +314,22 @@ private fun SudokuPlay(
 
 @Composable
 private fun SudokuBoard(state: SudokuState, modifier: Modifier, select: (Int) -> Unit) {
+    val size = state.puzzle.size
+    val boxRows = state.puzzle.boxRows
+    val boxColumns = state.puzzle.boxColumns
     val gridColor = MaterialTheme.colorScheme.primary
     val givenColor = MaterialTheme.colorScheme.onSurface
     Box(modifier.border(2.dp, gridColor)) {
         Column(Modifier.fillMaxSize()) {
-            for (row in 0..8) {
+            for (row in 0 until size) {
                 Row(Modifier.weight(1f)) {
-                    for (column in 0..8) {
-                        val index = row * 9 + column
+                    for (column in 0 until size) {
+                        val index = row * size + column
                         val value = state.values[index]
                         val given = state.puzzle.givens[index] != 0
                         val selected = index == state.selected
-                        val related = row == state.selected / 9 || column == state.selected % 9
+                        val related = row == state.selected / size ||
+                            column == state.selected % size
                         val wrong = value != 0 && value != state.puzzle.solution[index]
                         val background = when {
                             selected -> Mint
@@ -353,18 +360,20 @@ private fun SudokuBoard(state: SudokuState, modifier: Modifier, select: (Int) ->
                                         given -> givenColor
                                         else -> gridColor
                                     },
-                                    fontSize = 20.sp,
+                                    fontSize = if (size == 6) 26.sp else 20.sp,
                                 )
                             } else if (state.notes[index] != 0) {
                                 Column(Modifier.fillMaxSize()) {
-                                    for (noteRow in 0..2) {
+                                    for (noteRow in 0 until boxRows) {
                                         Row(Modifier.weight(1f)) {
-                                            for (noteColumn in 0..2) {
-                                                val digit = noteRow * 3 + noteColumn + 1
+                                            for (noteColumn in 0 until boxColumns) {
+                                                val digit = noteRow * boxColumns + noteColumn + 1
                                                 Box(Modifier.weight(1f).fillMaxHeight(),
                                                     contentAlignment = Alignment.Center) {
                                                     if (state.notes[index] and (1 shl digit) != 0) {
-                                                        Text("$digit", fontSize = 8.sp, color = gridColor)
+                                                        Text("$digit", fontSize =
+                                                            if (size == 6) 10.sp else 8.sp,
+                                                            color = gridColor)
                                                     }
                                                 }
                                             }
@@ -378,15 +387,23 @@ private fun SudokuBoard(state: SudokuState, modifier: Modifier, select: (Int) ->
             }
         }
         Canvas(Modifier.fillMaxSize()) {
-            for (line in 1..8) {
-                val stroke = if (line % 3 == 0) 2.dp.toPx() else 0.6.dp.toPx()
-                val color = if (line % 3 == 0) gridColor else Color(0xFFB7C7C4)
-                val x = size.width * line / 9f
-                val y = size.height * line / 9f
-                drawLine(color, androidx.compose.ui.geometry.Offset(x, 0f),
-                    androidx.compose.ui.geometry.Offset(x, size.height), stroke)
-                drawLine(color, androidx.compose.ui.geometry.Offset(0f, y),
-                    androidx.compose.ui.geometry.Offset(size.width, y), stroke)
+            for (line in 1 until size) {
+                val verticalThick = line % boxColumns == 0
+                val horizontalThick = line % boxRows == 0
+                val x = this.size.width * line / size
+                val y = this.size.height * line / size
+                drawLine(
+                    if (verticalThick) gridColor else Color(0xFFB7C7C4),
+                    androidx.compose.ui.geometry.Offset(x, 0f),
+                    androidx.compose.ui.geometry.Offset(x, this.size.height),
+                    if (verticalThick) 2.dp.toPx() else 0.6.dp.toPx(),
+                )
+                drawLine(
+                    if (horizontalThick) gridColor else Color(0xFFB7C7C4),
+                    androidx.compose.ui.geometry.Offset(0f, y),
+                    androidx.compose.ui.geometry.Offset(this.size.width, y),
+                    if (horizontalThick) 2.dp.toPx() else 0.6.dp.toPx(),
+                )
             }
         }
     }

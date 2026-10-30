@@ -10,7 +10,15 @@ data class SudokuPuzzle(
     val difficulty: SudokuDifficulty,
     val givens: List<Int>,
     val solution: List<Int>,
-)
+) {
+    val size: Int get() = when (givens.size) {
+        36 -> 6
+        81 -> 9
+        else -> error("Unsupported Sudoku grid size")
+    }
+    val boxRows: Int get() = if (size == 6) 2 else 3
+    val boxColumns: Int get() = 3
+}
 
 data class SudokuSnapshot(val values: List<Int>, val notes: List<Int>)
 
@@ -18,7 +26,7 @@ data class SudokuState(
     val puzzle: SudokuPuzzle,
     val mode: SudokuMode,
     val values: List<Int> = puzzle.givens,
-    val notes: List<Int> = List(81) { 0 },
+    val notes: List<Int> = List(puzzle.givens.size) { 0 },
     val selected: Int = 0,
     val noteMode: Boolean = false,
     val hintsUsed: Int = 0,
@@ -29,33 +37,36 @@ data class SudokuState(
 
 object SudokuEngine {
     // Each layout has one solution. The labels reflect the techniques needed:
-    // Easy: naked singles; Medium: hidden singles; Hard: more than singles.
+    // Easy is a 6x6 grid solved by naked singles. Medium and Hard use 9x9 grids.
     private val layouts = mapOf(
-        SudokuDifficulty.EASY to "003400709450709020780000000234500891007801200000000560040600002070900345912000678",
+        SudokuDifficulty.EASY to "000050006123230061560234000602610000",
         SudokuDifficulty.MEDIUM to "100400700056000003089100450234060800067890030001000007305600000000900040000045078",
         SudokuDifficulty.HARD to "100056700056000023000000406204007090007000200890000060000000000670000005000345008",
     )
 
     fun generate(difficulty: SudokuDifficulty, seed: Long, id: String = "free-$seed"): SudokuPuzzle {
         val random = Random(seed)
-        val digits = (1..9).shuffled(random)
-        val rows = (0..2).shuffled(random).flatMap { band ->
-            (band * 3..band * 3 + 2).shuffled(random)
+        val size = if (difficulty == SudokuDifficulty.EASY) 6 else 9
+        val boxRows = if (size == 6) 2 else 3
+        val boxColumns = 3
+        val digits = (1..size).shuffled(random)
+        val rows = (0 until size / boxRows).shuffled(random).flatMap { band ->
+            (band * boxRows until band * boxRows + boxRows).shuffled(random)
         }
-        val columns = (0..2).shuffled(random).flatMap { stack ->
-            (stack * 3..stack * 3 + 2).shuffled(random)
+        val columns = (0 until size / boxColumns).shuffled(random).flatMap { stack ->
+            (stack * boxColumns until stack * boxColumns + boxColumns).shuffled(random)
         }
-        val transpose = random.nextBoolean()
+        val transpose = size == 9 && random.nextBoolean()
         val layout = layouts.getValue(difficulty)
-        val givens = MutableList(81) { 0 }
-        val solution = MutableList(81) { 0 }
-        for (row in 0..8) for (column in 0..8) {
+        val givens = MutableList(size * size) { 0 }
+        val solution = MutableList(size * size) { 0 }
+        for (row in 0 until size) for (column in 0 until size) {
             val sourceRow = if (transpose) columns[column] else rows[row]
             val sourceColumn = if (transpose) rows[row] else columns[column]
-            val source = sourceRow * 9 + sourceColumn
-            val target = row * 9 + column
+            val source = sourceRow * size + sourceColumn
+            val target = row * size + column
             val given = layout[source].digitToInt()
-            val answer = (sourceRow * 3 + sourceRow / 3 + sourceColumn) % 9
+            val answer = (sourceRow * boxColumns + sourceRow / boxRows + sourceColumn) % size
             givens[target] = if (given == 0) 0 else digits[given - 1]
             solution[target] = digits[answer]
         }
@@ -63,10 +74,11 @@ object SudokuEngine {
     }
 
     fun select(state: SudokuState, cell: Int): SudokuState =
-        if (cell in 0..80) state.copy(selected = cell) else state
+        if (cell in state.values.indices) state.copy(selected = cell) else state
 
     fun enter(state: SudokuState, digit: Int): SudokuState {
-        if (digit !in 1..9 || state.isComplete || state.puzzle.givens[state.selected] != 0) return state
+        if (digit !in 1..state.puzzle.size || state.isComplete ||
+            state.puzzle.givens[state.selected] != 0) return state
         val cell = state.selected
         if (state.noteMode) {
             if (state.values[cell] != 0) return state

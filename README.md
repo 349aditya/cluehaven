@@ -5,7 +5,7 @@ Early development build focused on Sudoku and Tile Merge (2048-style).
 ## Current build
 
 - Home screen with game navigation, Progress shell, and a saved theme setting.
-- Playable offline Sudoku: daily and free-play boards, three difficulty levels, notes, erase, undo, one free hint, and local save/resume.
+- Playable offline Sudoku: 6×6 Easy, 9×9 Medium and Hard, a daily 9×9 puzzle, notes, erase, undo, one free hint, and local save/resume.
 - Playable Tile Merge: swipe to move tiles, score and best score, one free undo, new-run confirmation, and automatic local save/resume.
 - Mini Crosswords and Word Guess are deferred and are hidden from the app for now.
 - Ads, hint credits, content packs, and final icon are not yet integrated.
