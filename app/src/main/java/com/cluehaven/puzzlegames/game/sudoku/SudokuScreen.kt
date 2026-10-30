@@ -70,7 +70,7 @@ fun SudokuScreen(
     val context = LocalContext.current
     val storage = remember(context) { SudokuStorage.get(context) }
     val progress = remember(context) { ProgressRepository.get(context) }
-    val today = remember { LocalDate.now() }
+    val today = rememberCurrentDate()
     val dailyId = "daily-$today"
     var game by remember { mutableStateOf<SudokuState?>(null) }
     var freeSave by remember { mutableStateOf<SudokuState?>(null) }
@@ -94,23 +94,11 @@ fun SudokuScreen(
         dailySave = storage.load("sudoku_$dailyId")
         freeSave?.let(progress::recordSudoku)
         dailySave?.let(progress::recordSudoku)
-        when (activeMode) {
-            "free" -> game = freeSave
-            "daily" -> {
-                val existing = dailySave
-                if (existing != null) game = existing
-                else {
-                    val created = SudokuState(
-                        SudokuEngine.generate(
-                            SudokuDifficulty.MEDIUM, today.toEpochDay(), dailyId,
-                        ),
-                        SudokuMode.DAILY,
-                    )
-                    game = created
-                    dailySave = created
-                    storage.save(created)
-                }
-            }
+        val resolved = resolveSudokuSession(game, activeMode, freeSave, dailySave, today)
+        game = resolved
+        if (resolved?.mode == SudokuMode.DAILY && resolved.puzzle.id == dailyId && dailySave == null) {
+            dailySave = resolved
+            storage.save(resolved)
         }
         loading = false
     }
@@ -121,7 +109,8 @@ fun SudokuScreen(
         game = next
         activeMode = if (next.mode == SudokuMode.FREE) "free" else "daily"
         storage.save(next)
-        if (next.mode == SudokuMode.FREE) freeSave = next else dailySave = next
+        if (next.mode == SudokuMode.FREE) freeSave = next
+        else if (next.puzzle.id == dailyId) dailySave = next
         if (!wasComplete && next.isComplete) {
             progress.recordSudoku(next)
             showSolved = true
@@ -145,7 +134,7 @@ fun SudokuScreen(
             goBack = goBack,
             continueFree = { game = freeSave; activeMode = "free" },
             openDaily = {
-                val existing = dailySave
+                val existing = dailySave?.takeIf { it.puzzle.id == dailyId }
                 if (existing != null) { game = existing; activeMode = "daily" }
                 else update(SudokuState(
                     SudokuEngine.generate(SudokuDifficulty.MEDIUM, today.toEpochDay(), dailyId),
@@ -162,6 +151,7 @@ fun SudokuScreen(
             padding = padding,
             goBack = { game = null; activeMode = "" },
             update = ::update,
+            today = today,
         )
     }
 
@@ -251,6 +241,7 @@ private fun SudokuPlay(
     padding: PaddingValues,
     goBack: () -> Unit,
     update: (SudokuState) -> Unit,
+    today: LocalDate,
 ) {
     PuzzlePage(padding, "Sudoku", goBack, footer = {
         Row(Modifier.fillMaxWidth()) {
@@ -268,7 +259,9 @@ private fun SudokuPlay(
     }) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             StatusPill("${state.puzzle.difficulty.label()} · ${state.puzzle.size}×${state.puzzle.size}")
-            if (state.mode == SudokuMode.DAILY) Text("☼  Daily", style = MaterialTheme.typography.labelMedium,
+            if (state.mode == SudokuMode.DAILY) Text(
+                if (state.puzzle.id == "daily-$today") "☼  Daily" else "Daily · ${state.puzzle.id.removePrefix("daily-")}",
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary)
         }
         SudokuBoard(state, Modifier.widthIn(max = 460.dp).fillMaxWidth().aspectRatio(1f)) {

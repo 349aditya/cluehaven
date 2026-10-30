@@ -8,7 +8,7 @@ import java.time.LocalDate
 
 data class ResumeEntry(val title: String, val route: String)
 
-fun resumeEntry(session: PuzzleSession): ResumeEntry? = runCatching {
+fun resumeEntry(session: PuzzleSession, today: LocalDate = LocalDate.now()): ResumeEntry? = runCatching {
     val json = JSONObject(session.payload)
     fun values(key: String): List<Int> = json.getJSONArray(key).let { array ->
         (0 until array.length()).map { array.getInt(it) }
@@ -17,7 +17,7 @@ fun resumeEntry(session: PuzzleSession): ResumeEntry? = runCatching {
         session.gameId.startsWith("sudoku_") -> {
             if (values("values") == values("solution")) null
             else if (session.gameId == "sudoku_free") ResumeEntry("Sudoku · Your saved board", "sudoku|free")
-            else if (session.gameId == "sudoku_daily-${LocalDate.now()}")
+            else if (session.gameId == "sudoku_daily-$today")
                 ResumeEntry("Today's Sudoku", "sudoku_daily") else null
         }
         session.gameId == "tile_merge" -> if (TileMergeEngine.canMove(values("board")))

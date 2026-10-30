@@ -256,7 +256,8 @@ private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
     val database = remember(context) { CluehavenDatabase.get(context) }
     val sessionFlow = remember(database) { database.puzzleSessions().observeSessions() }
     val sessions by sessionFlow.collectAsState(initial = emptyList())
-    val resume = sessions.firstNotNullOfOrNull { resumeEntry(it) }
+    val today = rememberCurrentDate()
+    val resume = sessions.firstNotNullOfOrNull { resumeEntry(it, today) }
     Column(
         modifier = Modifier
             .fillMaxSize()

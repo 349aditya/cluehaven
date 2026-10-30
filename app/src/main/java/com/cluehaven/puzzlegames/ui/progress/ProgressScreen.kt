@@ -31,7 +31,7 @@ fun ProgressScreen(padding: PaddingValues) {
     val completions by progress.sudokuCompletions.collectAsState(initial = emptyList())
     val milestones by progress.tileMilestones.collectAsState(initial = emptyList())
     val nonogram by nonogramStorage.progress.collectAsState(initial = NonogramProgress())
-    val today = LocalDate.now()
+    val today = com.cluehaven.puzzlegames.ui.rememberCurrentDate()
     val sudoku = summarizeSudoku(completions, today)
     var tile by remember { mutableStateOf<TileMergeState?>(null) }
     var pipes by remember { mutableStateOf<List<PipeState>>(emptyList()) }

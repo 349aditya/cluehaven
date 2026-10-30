@@ -4,7 +4,7 @@ Early development build with Sudoku, Tile Merge (2048-style), Nonogram, and Pipe
 
 ## Current build
 
-- Tile Merge samples scrambled random output for tile positions and the 90% two / 10% four distribution, including saved runs. Undo keeps deterministic replay.
+- Tile Merge samples scrambled random output for tile positions and the 90% two / 10% four distribution, including saved runs. Undo keeps deterministic replay. Sudoku refreshes the daily selection at local midnight, on resume, and after clock/timezone changes; an already open board stays intact and shows its original daily date.
 
 - Reference-matched visual pass: centered game titles, compact typography and home grid, house-and-leaf brand mark, warm card surfaces without default purple tints, rectangular action controls, bottom toolbars, and a three-column Nonogram chooser. Reviewed screenshots from the connected phone are in `output/ui-review/`.
 - Settings includes working sound effects (Android system tap feedback), haptics, and reduced motion. Saved appearance and puzzle state are preserved when installing an update.
