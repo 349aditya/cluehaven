@@ -68,6 +68,32 @@ class TileMergeEngineTest {
         assertTrue(TileMergeEngine.canMove(board.toMutableList().also { it[0] = 0 }))
     }
 
+    @Test
+    fun gameOverCanBeUndoneUntilThreeUndoLimit() {
+        val fullBoard = listOf(
+            2, 4, 2, 4,
+            4, 2, 4, 2,
+            2, 4, 2, 4,
+            4, 2, 4, 2,
+        )
+        val previousBoard = fullBoard.toMutableList().also { it[0] = 0 }
+        val gameOver = TileMergeState(
+            board = fullBoard,
+            score = 100,
+            bestScore = 100,
+            rngState = 5L,
+            isGameOver = true,
+            undosUsed = 1,
+            history = listOf(TileMergeSnapshot(previousBoard, 96, 4L, 10, false)),
+        )
+        val undone = TileMergeEngine.undo(gameOver)
+        assertFalse(undone.isGameOver)
+        assertEquals(2, undone.undosUsed)
+        assertEquals(previousBoard, undone.board)
+        val exhausted = gameOver.copy(undosUsed = 3)
+        assertEquals(exhausted, TileMergeEngine.undo(exhausted))
+    }
+
     private fun state(board: List<Int>) = TileMergeState(
         board = board,
         score = 0,

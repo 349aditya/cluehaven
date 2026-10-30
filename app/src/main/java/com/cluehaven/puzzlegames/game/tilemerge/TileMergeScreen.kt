@@ -1,5 +1,8 @@
 package com.cluehaven.puzzlegames.game.tilemerge
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -25,10 +28,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +54,11 @@ import com.cluehaven.puzzlegames.ui.theme.Gold
 import com.cluehaven.puzzlegames.ui.theme.Mint
 import com.cluehaven.puzzlegames.ui.theme.Teal
 import com.cluehaven.puzzlegames.data.ProgressRepository
+import com.cluehaven.puzzlegames.data.AgeGroup
+import com.cluehaven.puzzlegames.data.AppSettings
+import com.cluehaven.puzzlegames.data.SettingsRepository
+import com.cluehaven.puzzlegames.ads.RewardedUndoAds
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 @Composable
@@ -55,15 +66,31 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
     val context = LocalContext.current
     val storage = remember(context) { TileMergeStorage.get(context) }
     val progress = remember(context) { ProgressRepository.get(context) }
+    val settingsRepository = remember(context) { SettingsRepository(context) }
+    val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
+    val scope = rememberCoroutineScope()
+    val ads = remember(context) { context.findActivity()?.let(::RewardedUndoAds) }
     var loadedGame by remember(storage) { mutableStateOf<TileMergeState?>(null) }
     var showRestartDialog by remember { mutableStateOf(false) }
+    var showGameOverDialog by remember { mutableStateOf(false) }
+    var showAgePrompt by remember { mutableStateOf(false) }
+    var adLoading by remember { mutableStateOf(false) }
+    var adError by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(ads) { onDispose { ads?.cancel() } }
 
     BackHandler {
-        if (showRestartDialog) showRestartDialog = false else goBack()
+        when {
+            showAgePrompt -> { showAgePrompt = false; showGameOverDialog = true }
+            showRestartDialog -> showRestartDialog = false
+            showGameOverDialog -> { ads?.cancel(); adLoading = false; showGameOverDialog = false }
+            else -> goBack()
+        }
     }
 
     LaunchedEffect(storage) {
         loadedGame = storage.load().also(progress::recordTile2048)
+        showGameOverDialog = loadedGame?.isGameOver == true
     }
     val game = loadedGame ?: run {
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
@@ -76,6 +103,30 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
         loadedGame = next
         storage.save(next)
         if (!game.reached2048 && next.reached2048) progress.recordTile2048(next)
+        if (!game.isGameOver && next.isGameOver) showGameOverDialog = true
+        if (!next.isGameOver) showGameOverDialog = false
+    }
+
+    fun requestAdUndo(ageGroup: AgeGroup) {
+        if (adLoading || game.undosUsed !in 1..2 || game.history.isEmpty()) return
+        val rewardedAds = ads ?: run {
+            adError = "Ad unavailable. You can start a new run."
+            return
+        }
+        adLoading = true
+        adError = null
+        rewardedAds.show(
+            ageGroup = ageGroup,
+            onReward = {
+                val current = loadedGame
+                if (current != null && current.isGameOver &&
+                    current.undosUsed in 1..2 && current.history.isNotEmpty()) {
+                    update(TileMergeEngine.undo(current))
+                }
+            },
+            onUnavailable = { adError = "Ad unavailable. Try again later or start a new run." },
+            onFinished = { adLoading = false },
+        )
     }
 
     Column(
@@ -172,7 +223,7 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
 
         Text(
             when {
-                game.isGameOver -> "No moves left · Start a new run"
+                game.isGameOver -> "No moves left · Tap Options"
                 game.reached2048 -> "You reached 2048! Keep merging"
                 else -> "Swipe tiles to merge · Goal: 2048"
             },
@@ -183,16 +234,120 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(
-                onClick = { update(TileMergeEngine.undo(game)) },
-                enabled = game.undosUsed == 0 && game.history.isNotEmpty(),
-                modifier = Modifier.weight(1f),
-            ) { Text(if (game.undosUsed == 0) "Undo · 1 free" else "Undo used") }
-            OutlinedButton(
-                onClick = { showRestartDialog = true },
-                modifier = Modifier.weight(1f),
-            ) { Text("New run") }
+            if (game.isGameOver) {
+                Button(onClick = { showGameOverDialog = true }, modifier = Modifier.weight(1f)) {
+                    Text("Options")
+                }
+                OutlinedButton(
+                    onClick = { update(TileMergeEngine.newGame(bestScore = game.bestScore)) },
+                    modifier = Modifier.weight(1f),
+                ) { Text("New run") }
+            } else {
+                Button(
+                    onClick = { update(TileMergeEngine.undo(game)) },
+                    enabled = game.undosUsed == 0 && game.history.isNotEmpty(),
+                    modifier = Modifier.weight(1f),
+                ) { Text(if (game.undosUsed == 0) "Undo · 1 free" else "Undo used") }
+                OutlinedButton(
+                    onClick = { showRestartDialog = true },
+                    modifier = Modifier.weight(1f),
+                ) { Text("New run") }
+            }
         }
+    }
+
+    if (showGameOverDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                ads?.cancel()
+                adLoading = false
+                showGameOverDialog = false
+            },
+            title = { Text("No moves left") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Your board is full and there are no matching tiles to merge.")
+                    Text("Score ${game.score} · Best ${game.bestScore}",
+                        fontWeight = FontWeight.Bold)
+                    when {
+                        game.history.isEmpty() -> Unit
+                        game.undosUsed == 0 -> Button(
+                            onClick = { update(TileMergeEngine.undo(game)) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Undo last move · Free") }
+                        game.undosUsed < 3 && ads?.isAvailable == true -> Button(
+                            onClick = {
+                                val ageGroup = settings.ageGroup
+                                if (ageGroup == null) {
+                                    showGameOverDialog = false
+                                    showAgePrompt = true
+                                } else requestAdUndo(ageGroup)
+                            },
+                            enabled = !adLoading,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Watch ad to undo") }
+                        game.undosUsed < 3 -> Text("Rewarded undo is not available in this build.")
+                        else -> Text("All three undos have been used for this run.")
+                    }
+                    if (adLoading) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                            Text("Loading ad…")
+                        }
+                    }
+                    adError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    ads?.cancel()
+                    adLoading = false
+                    update(TileMergeEngine.newGame(bestScore = game.bestScore))
+                    showGameOverDialog = false
+                }) { Text("New game") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    ads?.cancel()
+                    adLoading = false
+                    showGameOverDialog = false
+                }) { Text("View board") }
+            },
+        )
+    }
+
+    if (showAgePrompt) {
+        AlertDialog(
+            onDismissRequest = { showAgePrompt = false; showGameOverDialog = true },
+            title = { Text("Select your age group") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Choose your age group before requesting an optional ad.")
+                    listOf(
+                        AgeGroup.UNDER_13 to "Under 13",
+                        AgeGroup.AGE_13_TO_17 to "13–17",
+                        AgeGroup.AGE_18_PLUS to "18 or older",
+                    ).forEach { (group, label) ->
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch { settingsRepository.setAgeGroup(group) }
+                                showAgePrompt = false
+                                showGameOverDialog = true
+                                requestAdUndo(group)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(label) }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAgePrompt = false; showGameOverDialog = true }) {
+                    Text("Not now")
+                }
+            },
+        )
     }
 
     if (showRestartDialog) {
@@ -211,6 +366,12 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
             },
         )
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 @Composable
