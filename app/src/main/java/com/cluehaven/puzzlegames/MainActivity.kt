@@ -80,34 +80,29 @@ private data class Game(
     val subtitle: String,
     val symbol: String,
     val accent: Color,
-    val description: String,
 )
 
 private val games = listOf(
-    Game("sudoku", "Sudoku", "Number logic", "9", Cream,
-        "Fill each row, column, and 3×3 box with the digits 1 through 9."),
-    Game("crosswords", "Crosswords", "Words & clues", "A", Coral,
-        "Solve short 5×5 crosswords using across and down clues."),
-    Game("word_guess", "Word Guess", "Six tries", "?", Gold,
-        "Find the five-letter word in six guesses."),
-    Game("tile_merge", "Tile Merge", "Reach 2048", "2", Mint,
-        "Swipe to combine matching tiles and work toward 2048."),
+    Game("sudoku", "Sudoku", "Number logic", "9", Cream),
+    Game("tile_merge", "Tile Merge", "Reach 2048", "2", Mint),
 )
 
 @Composable
 private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
     var route by rememberSaveable { mutableStateOf("home") }
-    val selectedGame = games.firstOrNull { it.id == route }
+    val visibleRoute = route.takeIf {
+        it == "home" || it == "progress" || it == "settings" || games.any { game -> game.id == it }
+    } ?: "home"
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (selectedGame == null) {
+            if (visibleRoute != "sudoku" && visibleRoute != "tile_merge") {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     listOf("home" to "Home", "progress" to "Progress", "settings" to "Settings")
                         .forEach { (id, label) ->
                             NavigationBarItem(
-                                selected = route == id,
+                                selected = visibleRoute == id,
                                 onClick = { route = id },
                                 icon = {
                                     Text(
@@ -132,15 +127,14 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
         },
     ) { padding ->
         when {
-            route == "sudoku" -> SudokuScreen(padding) { route = "home" }
-            route == "tile_merge" -> TileMergeScreen(padding) { route = "home" }
-            selectedGame != null -> GameInfoScreen(selectedGame, padding) { route = "home" }
-            route == "progress" -> SimpleScreen(
+            visibleRoute == "sudoku" -> SudokuScreen(padding) { route = "home" }
+            visibleRoute == "tile_merge" -> TileMergeScreen(padding) { route = "home" }
+            visibleRoute == "progress" -> SimpleScreen(
                 "Progress",
                 "Your puzzle stats and daily streaks will appear here as you play.",
                 padding,
             )
-            route == "settings" -> SettingsScreen(padding, darkTheme, setDarkTheme)
+            visibleRoute == "settings" -> SettingsScreen(padding, darkTheme, setDarkTheme)
             else -> HomeScreen(padding) { route = it }
         }
     }
@@ -198,14 +192,11 @@ private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
             shape = RoundedCornerShape(20.dp),
         ) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Today's puzzles", color = Color.White,
+                Text("Today's puzzle", color = Color.White,
                     style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("Two fresh challenges, at your pace", color = Color(0xFFD8E8E3),
+                Text("A fresh Sudoku challenge, at your pace", color = Color(0xFFD8E8E3),
                     style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DailyCard("Sudoku", "Daily grid", Modifier.weight(1f)) { openGame("sudoku") }
-                    DailyCard("Word Guess", "Daily word", Modifier.weight(1f)) { openGame("word_guess") }
-                }
+                DailyCard("Sudoku", "Daily grid", Modifier.fillMaxWidth()) { openGame("sudoku") }
             }
         }
 
@@ -278,26 +269,6 @@ private fun GameCard(game: Game, modifier: Modifier, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-    }
-}
-
-@Composable
-private fun GameInfoScreen(game: Game, padding: PaddingValues, goBack: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize().padding(padding).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        Text("‹  Back", modifier = Modifier.clickable(onClick = goBack),
-            style = MaterialTheme.typography.titleMedium, color = Teal)
-        Box(
-            Modifier.size(72.dp).background(game.accent, RoundedCornerShape(20.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(game.symbol, fontSize = 38.sp, fontWeight = FontWeight.Bold, color = Teal)
-        }
-        Text(game.title, style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold)
-        Text(game.description, style = MaterialTheme.typography.bodyLarge)
     }
 }
 

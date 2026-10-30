@@ -1,13 +1,13 @@
 # Cluehaven Android app
 
-Early development build for the four-game puzzle collection.
+Early development build focused on Sudoku and Tile Merge (2048-style).
 
 ## Current build
 
 - Home screen with game navigation, Progress shell, and a saved theme setting.
 - Playable offline Sudoku: daily and free-play boards, three difficulty levels, notes, erase, undo, one free hint, and local save/resume.
 - Playable Tile Merge: swipe to move tiles, score and best score, one free undo, new-run confirmation, and automatic local save/resume.
-- Mini Crosswords and Word Guess are listed but their gameplay is still being developed.
+- Mini Crosswords and Word Guess are deferred and are hidden from the app for now.
 - Ads, hint credits, content packs, and final icon are not yet integrated.
 
 ## Run on the connected phone
