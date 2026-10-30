@@ -37,10 +37,12 @@ fun formatPlayTime(millis: Long): String {
 
 /** Only complete, fully timed and unassisted solves compete in the same category. */
 fun personalBests(history: List<PlayRecord>): List<PlayRecord> = history
-    .filter { it.completedAt != null && it.timeKnown && it.hintsUsed == 0 && it.game != "Tile Merge" }
+    .filter { it.completedAt != null && it.timeKnown && it.hintsUsed == 0 && !isScoreGame(it.game) }
     .groupBy { it.game to it.category }
     .values.map { records -> records.minBy { it.elapsedMillis } }
     .sortedWith(compareBy({ it.game }, { it.category }))
+
+fun isScoreGame(game: String): Boolean = game == "Tile Merge" || game == "Block Garden"
 
 /** Monotonic time is independent of date, time zone and wall-clock changes. */
 class ActivePlayClock(initialMillis: Long = 0, private val now: () -> Long) {

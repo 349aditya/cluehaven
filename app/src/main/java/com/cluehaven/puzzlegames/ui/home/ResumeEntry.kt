@@ -3,6 +3,7 @@ package com.cluehaven.puzzlegames.ui.home
 import com.cluehaven.puzzlegames.data.PuzzleSession
 import com.cluehaven.puzzlegames.game.pipes.PipeEngine
 import com.cluehaven.puzzlegames.game.tilemerge.TileMergeEngine
+import com.cluehaven.puzzlegames.game.blocks.BlockEngine
 import org.json.JSONObject
 import java.time.LocalDate
 
@@ -22,6 +23,14 @@ fun resumeEntry(session: PuzzleSession, today: LocalDate = LocalDate.now()): Res
         }
         session.gameId == "tile_merge" -> if (TileMergeEngine.canMove(values("board")))
             ResumeEntry("Tile Merge · Score ${json.getInt("score")}", "tile_merge") else null
+        session.gameId == "block_garden" -> {
+            val board = values("board")
+            val tray = json.getJSONArray("tray")
+            val playable = (0 until tray.length()).any {
+                !tray.isNull(it) && BlockEngine.placements(board, BlockEngine.shape(tray.getString(it))).isNotEmpty()
+            }
+            if (playable) ResumeEntry("Block Garden · Score ${json.getInt("score")}", "blocks") else null
+        }
         session.gameId.startsWith("nonogram_") -> if (!json.optBoolean("complete"))
             ResumeEntry("Nonogram · Your saved picture", "nonogram|${session.gameId.removePrefix("nonogram_")}") else null
         session.gameId.startsWith("pipes_") -> {

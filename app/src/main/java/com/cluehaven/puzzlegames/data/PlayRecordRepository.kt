@@ -8,6 +8,7 @@ import com.cluehaven.puzzlegames.game.nonogram.*
 import com.cluehaven.puzzlegames.game.pipes.*
 import com.cluehaven.puzzlegames.game.tilemerge.*
 import com.cluehaven.puzzlegames.game.sudoku.SudokuStorage
+import com.cluehaven.puzzlegames.game.blocks.BlockStorage
 import java.time.LocalDate
 
 class PlayRecordRepository private constructor(context: Context) {
@@ -34,6 +35,7 @@ class PlayRecordRepository private constructor(context: Context) {
                         session.gameId.startsWith("pipes_") -> PipeStorage.get(context)
                             .load(session.gameId.removePrefix("pipes_").toInt()).takeIf { it.isComplete }?.playRecord()
                         session.gameId == "tile_merge" -> TileMergeStorage.get(context).load().takeIf { it.isGameOver }?.playRecord()
+                        session.gameId == "block_garden" -> BlockStorage.get(context).saved()?.takeIf { it.isGameOver }?.playRecord()
                         else -> null
                     }
                 }.getOrNull()

@@ -33,6 +33,7 @@ class PlayRecordsTest {
             record("slow", 8000), record("best", 5000), record("assisted", 10).copy(hintsUsed = 1),
             record("old", 0).copy(timeKnown = false), record("unfinished", 5).copy(completedAt = null),
             record("large", 12000, "10×10"), record("tile", 3).copy(game = "Tile Merge"),
+            record("blocks", 2).copy(game = "Block Garden"),
         ))
         assertEquals(setOf("best", "large"), bests.map { it.id }.toSet())
     }

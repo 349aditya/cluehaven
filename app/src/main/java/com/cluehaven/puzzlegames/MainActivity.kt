@@ -71,6 +71,8 @@ import com.cluehaven.puzzlegames.game.tilemerge.TileMergeScreen
 import com.cluehaven.puzzlegames.game.sudoku.SudokuScreen
 import com.cluehaven.puzzlegames.game.nonogram.NonogramScreen
 import com.cluehaven.puzzlegames.game.pipes.PipeScreen
+import com.cluehaven.puzzlegames.game.blocks.BlockScreen
+import com.cluehaven.puzzlegames.ui.home.BlockGardenArtwork
 import com.cluehaven.puzzlegames.ui.home.NonogramArtwork
 import com.cluehaven.puzzlegames.ui.home.PipeArtwork
 import com.cluehaven.puzzlegames.data.AppSettings
@@ -128,6 +130,7 @@ private val games = listOf(
     Game("tile_merge", "Tile Merge", "Reach 2048", Mint),
     Game("nonogram", "Nonogram", "Reveal a picture", Gold),
     Game("pipes", "Pipe Connect", "Connect the network", Coral),
+    Game("blocks", "Block Garden", "Place blocks · Clear lines", Mint),
 )
 
 @Composable
@@ -146,7 +149,7 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (visibleRoute != "sudoku" && visibleRoute != "sudoku_daily" &&
-                visibleRoute != "tile_merge" && visibleRoute != "nonogram" && visibleRoute != "pipes") {
+                visibleRoute != "tile_merge" && visibleRoute != "nonogram" && visibleRoute != "pipes" && visibleRoute != "blocks") {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.background,
                     modifier = Modifier.navigationBarsPadding().height(64.dp),
                     windowInsets = WindowInsets(0, 0, 0, 0)) {
@@ -185,6 +188,7 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
             visibleRoute == "tile_merge" -> TileMergeScreen(padding) { route = "home" }
             visibleRoute == "nonogram" -> NonogramScreen(padding, initialId = route.substringAfter('|', "").ifEmpty { null }) { route = "home" }
             visibleRoute == "pipes" -> PipeScreen(padding, initialSize = route.substringAfter('|', "0").toIntOrNull() ?: 0) { route = "home" }
+            visibleRoute == "blocks" -> BlockScreen(padding) { route = "home" }
             visibleRoute == "progress" -> ProgressScreen(padding)
             visibleRoute == "settings" -> SettingsScreen(padding, settings, setTheme, setMotion, setFeedback)
             else -> HomeScreen(padding) { route = it }
@@ -234,7 +238,7 @@ private fun SettingsScreen(padding: PaddingValues, settings: AppSettings,
         Card {
             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("About Cluehaven", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("Version 1.0 · Four little puzzles, always offline")
+                Text("Version 1.0 · Five little puzzles, always offline")
                 HorizontalDivider()
                 Text("Settings and puzzle progress are saved on this device.", style = MaterialTheme.typography.bodyMedium)
             }
@@ -292,6 +296,7 @@ private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
                     "pipes" -> PipeArtwork(64.dp)
                     "nonogram" -> NonogramArtwork(64.dp)
                     "tile_merge" -> TileMergeArtwork(64.dp)
+                    "blocks" -> BlockGardenArtwork(64.dp)
                     else -> SudokuArtwork(64.dp)
                 }
                 }
@@ -301,6 +306,8 @@ private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
         }
 
         games.chunked(2).forEach { rowGames ->
+            if (rowGames.size == 1) GameCard(rowGames.first(), Modifier.fillMaxWidth(), wide = true) { openGame(rowGames.first().id) }
+            else
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowGames.forEach { game ->
                     GameCard(game, Modifier.weight(1f)) { openGame(game.id) }
@@ -354,15 +361,24 @@ private fun DailyCard(title: String, subtitle: String, modifier: Modifier, onCli
 }
 
 @Composable
-private fun GameCard(game: Game, modifier: Modifier, onClick: () -> Unit) {
+private fun GameCard(game: Game, modifier: Modifier, wide: Boolean = false, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(142.dp),
+        modifier = modifier.height(if (wide) 94.dp else 142.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(.5.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
+        if (wide) Row(Modifier.fillMaxSize().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            BlockGardenArtwork(60.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(game.title, fontWeight = FontWeight.Bold)
+                Text(game.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text("›", color = MaterialTheme.colorScheme.primary, fontSize = 24.sp)
+        } else
         Column(
             Modifier.fillMaxSize().padding(12.dp),
             verticalArrangement = Arrangement.SpaceBetween,
@@ -376,6 +392,7 @@ private fun GameCard(game: Game, modifier: Modifier, onClick: () -> Unit) {
                     "tile_merge" -> TileMergeArtwork(64.dp)
                     "nonogram" -> NonogramArtwork(64.dp)
                     "pipes" -> PipeArtwork(64.dp)
+                    "blocks" -> BlockGardenArtwork(64.dp)
                 }
             }
             Column {

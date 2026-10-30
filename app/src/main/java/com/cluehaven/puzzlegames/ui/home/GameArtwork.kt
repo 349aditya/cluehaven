@@ -1,5 +1,7 @@
 package com.cluehaven.puzzlegames.ui.home
 
+import com.cluehaven.puzzlegames.ui.theme.Mint
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -112,6 +114,23 @@ fun NonogramArtwork(size: Dp) {
                     Offset(column * cell + 1.dp.toPx(), row * cell + 1.dp.toPx()),
                     Size(cell - 2.dp.toPx(), cell - 2.dp.toPx()))
             }
+        }
+    }
+}
+
+@Composable
+fun BlockGardenArtwork(dimension: Dp) {
+    Canvas(Modifier.size(dimension).clearAndSetSemantics { }) {
+        val u = size.minDimension / 100f
+        drawRoundRect(DarkTeal.copy(alpha = .12f), Offset(0f, 4 * u), Size(98 * u, 96 * u), CornerRadius(14 * u))
+        drawRoundRect(DarkTeal, size = Size(98 * u, 96 * u), cornerRadius = CornerRadius(14 * u))
+        val pattern = listOf(0, 0, 3, 3, 4, 0, 3, 3, 4, 2, 0, 0, 4, 2, 2, 0)
+        pattern.forEachIndexed { index, value ->
+            val color = when (value) { 2 -> Mint; 3 -> Gold; 4 -> Coral; else -> Color(0xFFE7EEE4) }
+            val origin = Offset((7 + index % 4 * 22) * u, (6 + index / 4 * 22) * u)
+            drawRoundRect(color, origin, Size(18 * u, 18 * u), CornerRadius(4 * u))
+            if (value != 0) drawLine(Color.White.copy(alpha = .4f), origin + Offset(4 * u, 3 * u),
+                origin + Offset(14 * u, 3 * u), 1.5f * u)
         }
     }
 }

@@ -19,6 +19,7 @@ import com.cluehaven.puzzlegames.game.tilemerge.TileMergeStorage
 import com.cluehaven.puzzlegames.game.tilemerge.TileMergeState
 import com.cluehaven.puzzlegames.game.nonogram.*
 import com.cluehaven.puzzlegames.game.pipes.*
+import com.cluehaven.puzzlegames.game.blocks.*
 import com.cluehaven.puzzlegames.ui.home.*
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -41,6 +42,7 @@ fun ProgressScreen(padding: PaddingValues) {
     val sudoku = summarizeSudoku(completions, today)
     var tile by remember { mutableStateOf<TileMergeState?>(null) }
     var pipes by remember { mutableStateOf<List<PipeState>>(emptyList()) }
+    var blocks by remember { mutableStateOf<BlockState?>(null) }
     LaunchedEffect(Unit) {
         val storage = SudokuStorage.get(context)
         storage.load(SudokuStorage.FREE_KEY)?.let(progress::recordSudoku)
@@ -48,6 +50,7 @@ fun ProgressScreen(padding: PaddingValues) {
         tile = TileMergeStorage.get(context).load().also(progress::recordTile2048)
         val pipeStorage = PipeStorage.get(context)
         pipes = listOf(4, 6).map { pipeStorage.load(it) }
+        blocks = BlockStorage.get(context).saved()
     }
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -89,6 +92,21 @@ fun ProgressScreen(padding: PaddingValues) {
                 history.count { it.game == "Pipe Connect" }.toString(), "networks solved",
                 "${pipes.count { it.isComplete }} completed boards saved")
         }
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BlockGardenArtwork(44.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Block Garden", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("${history.count { it.game == "Block Garden" }} runs finished", style = MaterialTheme.typography.bodySmall)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text((blocks?.bestScore ?: 0).toString(), style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text("best score", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
         PersonalBestSection(history)
         CompletionHistory(history)
         Text("Saved on this device. Older results without a full timer are excluded from fastest times. Older board dates reflect their last save.",
@@ -123,18 +141,18 @@ private fun CompletionHistory(history: List<PlayRecord>) {
     val dateFormat = remember { DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale.getDefault()) }
     Text("Completion history", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("All", "Sudoku", "Tile Merge", "Nonogram", "Pipe Connect").forEach { name ->
+        listOf("All", "Sudoku", "Tile Merge", "Nonogram", "Pipe Connect", "Block Garden").forEach { name ->
             FilterChip(selected = name == game, onClick = { game = name }, label = { Text(name) })
         }
     }
-    if (filtered.isEmpty()) Text("Your completed puzzles and finished Tile Merge runs will appear here.",
+    if (filtered.isEmpty()) Text("Your completed puzzles and finished runs will appear here.",
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     filtered.take(limit).forEach { record ->
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("${record.game} · ${record.category}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                 Text(record.title, style = MaterialTheme.typography.bodySmall)
-                Text(if (record.game == "Tile Merge") "Score ${record.score} · " +
+                Text(if (isScoreGame(record.game)) "Score ${record.score} · " +
                     if (record.timeKnown) formatPlayTime(record.elapsedMillis) else "Time unavailable"
                     else (if (record.timeKnown) formatPlayTime(record.elapsedMillis) else "Time unavailable") +
                         if (record.hintsUsed > 0) " · Assisted (${record.hintsUsed} hint)" else " · No hints",
