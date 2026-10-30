@@ -16,6 +16,30 @@ Early development build focused on Sudoku and Tile Merge (2048-style).
 
 Open this folder in Android Studio, choose the connected phone in the device selector, then press **Run** for the `app` configuration. On the home screen, tap **Sudoku** or **Tile Merge**.
 
+## Build on Windows
+
+Open the `Cluehaven` folder in Android Studio and let Gradle sync. The ignored
+`local.properties` file must point to this machine's Android SDK; on this machine:
+
+```properties
+sdk.dir=C\:/Users/aditya/AppData/Local/Android/Sdk
+```
+
+The project requests Java 25 for the Gradle daemon. Android Studio includes Java 25,
+and the Gradle wrapper can also download the required toolchain. Keep the existing
+Android SDK 37 platform installed through Android Studio's SDK Manager.
+
+From PowerShell in this folder, run:
+
+```powershell
+.\build.ps1
+.\build.ps1 :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+```
+
+The PowerShell script uses the ignored `.gradle-user` folder in this checkout for
+Gradle caches and downloaded toolchains. The first build needs internet access for
+any missing dependencies. The standard Windows wrapper is `gradlew.bat`.
+
 ## Verification so far
 
 - `:app:assembleDebug` passed.
