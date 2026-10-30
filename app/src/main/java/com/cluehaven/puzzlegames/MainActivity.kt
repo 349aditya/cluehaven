@@ -58,6 +58,7 @@ import com.cluehaven.puzzlegames.data.AppSettings
 import com.cluehaven.puzzlegames.data.SettingsRepository
 import com.cluehaven.puzzlegames.ui.home.SudokuArtwork
 import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
+import com.cluehaven.puzzlegames.ui.progress.ProgressScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -145,11 +146,7 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
                 openDailyOnStart = true,
             )
             visibleRoute == "tile_merge" -> TileMergeScreen(padding) { route = "home" }
-            visibleRoute == "progress" -> SimpleScreen(
-                "Progress",
-                "Your puzzle stats and daily streaks will appear here as you play.",
-                padding,
-            )
+            visibleRoute == "progress" -> ProgressScreen(padding)
             visibleRoute == "settings" -> SettingsScreen(padding, darkTheme, setDarkTheme)
             else -> HomeScreen(padding) { route = it }
         }
@@ -298,19 +295,6 @@ private fun GameCard(game: Game, modifier: Modifier, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-    }
-}
-
-@Composable
-private fun SimpleScreen(title: String, message: String, padding: PaddingValues) {
-    Column(
-        Modifier.fillMaxSize().padding(padding).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        Text(title, style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold)
-        Text(message, style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

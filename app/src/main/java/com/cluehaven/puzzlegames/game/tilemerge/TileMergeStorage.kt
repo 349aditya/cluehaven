@@ -68,6 +68,9 @@ class TileMergeStorage private constructor(context: Context) {
                 score = root.getInt("score"),
                 bestScore = root.getInt("bestScore"),
                 rngState = root.getLong("rngState"),
+                runId = root.optString("runId").ifBlank {
+                    "legacy-${root.getLong("rngState")}"
+                },
                 moveCount = root.getInt("moveCount"),
                 undosUsed = root.getInt("undosUsed"),
                 reached2048 = root.getBoolean("reached2048"),
@@ -82,6 +85,7 @@ class TileMergeStorage private constructor(context: Context) {
             .put("score", state.score)
             .put("bestScore", state.bestScore)
             .put("rngState", state.rngState)
+            .put("runId", state.runId)
             .put("moveCount", state.moveCount)
             .put("undosUsed", state.undosUsed)
             .put("reached2048", state.reached2048)

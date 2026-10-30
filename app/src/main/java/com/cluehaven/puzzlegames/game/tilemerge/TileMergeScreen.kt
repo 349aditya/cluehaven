@@ -47,12 +47,14 @@ import com.cluehaven.puzzlegames.ui.theme.DarkTeal
 import com.cluehaven.puzzlegames.ui.theme.Gold
 import com.cluehaven.puzzlegames.ui.theme.Mint
 import com.cluehaven.puzzlegames.ui.theme.Teal
+import com.cluehaven.puzzlegames.data.ProgressRepository
 import kotlin.math.abs
 
 @Composable
 fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
     val context = LocalContext.current
     val storage = remember(context) { TileMergeStorage.get(context) }
+    val progress = remember(context) { ProgressRepository.get(context) }
     var loadedGame by remember(storage) { mutableStateOf<TileMergeState?>(null) }
     var showRestartDialog by remember { mutableStateOf(false) }
 
@@ -60,7 +62,9 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
         if (showRestartDialog) showRestartDialog = false else goBack()
     }
 
-    LaunchedEffect(storage) { loadedGame = storage.load() }
+    LaunchedEffect(storage) {
+        loadedGame = storage.load().also(progress::recordTile2048)
+    }
     val game = loadedGame ?: run {
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
@@ -71,6 +75,7 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
     fun update(next: TileMergeState) {
         loadedGame = next
         storage.save(next)
+        if (!game.reached2048 && next.reached2048) progress.recordTile2048(next)
     }
 
     Column(

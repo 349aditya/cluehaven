@@ -33,6 +33,10 @@ class SudokuStorage private constructor(context: Context) {
         return state
     }
 
+    suspend fun completedDailyPuzzles(): List<SudokuState> =
+        sessions.dailySudokuSessions().mapNotNull { decode(it.payload) }
+            .filter { it.isComplete }
+
     fun save(state: SudokuState) {
         val key = keyFor(state)
         latest[key] = state

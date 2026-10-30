@@ -15,6 +15,7 @@ data class TileMergeState(
     val score: Int,
     val bestScore: Int,
     val rngState: Long,
+    val runId: String = "",
     val moveCount: Int = 0,
     val undosUsed: Int = 0,
     val reached2048: Boolean = false,
@@ -37,7 +38,10 @@ object TileMergeEngine {
         val board = MutableList(16) { 0 }
         val afterFirst = spawnTile(board, seed)
         val afterSecond = spawnTile(board, afterFirst)
-        return TileMergeState(board.toList(), score = 0, bestScore = bestScore, rngState = afterSecond)
+        return TileMergeState(
+            board.toList(), score = 0, bestScore = bestScore,
+            rngState = afterSecond, runId = "run-$seed",
+        )
     }
 
     fun move(state: TileMergeState, direction: MoveDirection): TileMergeState {

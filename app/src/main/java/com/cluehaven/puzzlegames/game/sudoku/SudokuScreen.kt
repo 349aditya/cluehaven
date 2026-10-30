@@ -48,6 +48,7 @@ import com.cluehaven.puzzlegames.ui.theme.Coral
 import com.cluehaven.puzzlegames.ui.theme.DarkTeal
 import com.cluehaven.puzzlegames.ui.theme.Mint
 import com.cluehaven.puzzlegames.ui.theme.Teal
+import com.cluehaven.puzzlegames.data.ProgressRepository
 import java.time.LocalDate
 
 @Composable
@@ -58,6 +59,7 @@ fun SudokuScreen(
 ) {
     val context = LocalContext.current
     val storage = remember(context) { SudokuStorage.get(context) }
+    val progress = remember(context) { ProgressRepository.get(context) }
     val today = remember { LocalDate.now() }
     val dailyId = "daily-$today"
     var game by remember { mutableStateOf<SudokuState?>(null) }
@@ -80,6 +82,8 @@ fun SudokuScreen(
     LaunchedEffect(storage, today) {
         freeSave = storage.load(SudokuStorage.FREE_KEY)
         dailySave = storage.load("sudoku_$dailyId")
+        freeSave?.let(progress::recordSudoku)
+        dailySave?.let(progress::recordSudoku)
         when (activeMode) {
             "free" -> game = freeSave
             "daily" -> {
@@ -107,7 +111,10 @@ fun SudokuScreen(
         activeMode = if (next.mode == SudokuMode.FREE) "free" else "daily"
         storage.save(next)
         if (next.mode == SudokuMode.FREE) freeSave = next else dailySave = next
-        if (!wasComplete && next.isComplete) showSolved = true
+        if (!wasComplete && next.isComplete) {
+            progress.recordSudoku(next)
+            showSolved = true
+        }
     }
 
     fun startFree(difficulty: SudokuDifficulty) {

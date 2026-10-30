@@ -11,6 +11,7 @@ class TileMergeEngineTest {
         val game = TileMergeEngine.newGame(seed = 42L)
         assertEquals(2, game.board.count { it != 0 })
         assertEquals(0, game.score)
+        assertEquals("run-42", game.runId)
         assertFalse(game.isGameOver)
     }
 
@@ -51,6 +52,7 @@ class TileMergeEngineTest {
         assertEquals(start.board, undone.board)
         assertEquals(start.score, undone.score)
         assertEquals(start.rngState, undone.rngState)
+        assertEquals(start.runId, undone.runId)
         assertEquals(1, undone.undosUsed)
     }
 
