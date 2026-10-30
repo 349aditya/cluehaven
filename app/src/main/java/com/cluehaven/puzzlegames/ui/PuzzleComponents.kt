@@ -159,13 +159,35 @@ fun ActionSymbol(symbol: String, color: androidx.compose.ui.graphics.Color, modi
                 drawLine(color, Offset(w * .65f, h * .58f), Offset(w * .58f, h * .82f), 1.5.dp.toPx())
                 drawLine(color, Offset(w * .42f, h * .92f), Offset(w * .58f, h * .92f), 1.5.dp.toPx())
             }
-            "undo", "new" -> {
-                drawArc(color, -70f, 280f, false, Offset(w * .2f, h * .2f),
-                    androidx.compose.ui.geometry.Size(w * .65f, h * .65f), style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
-                val arrow = Path().apply {
-                    moveTo(w * .2f, h * .08f); lineTo(w * .12f, h * .35f); lineTo(w * .4f, h * .35f)
+            "play" -> {
+                val triangle = Path().apply {
+                    moveTo(w * .3f, h * .15f)
+                    lineTo(w * .85f, h * .5f)
+                    lineTo(w * .3f, h * .85f)
+                    close()
                 }
-                drawPath(arrow, color, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
+                drawPath(triangle, color)
+            }
+            "undo" -> {
+                val curve = Path().apply {
+                    moveTo(w * .18f, h * .36f)
+                    lineTo(w * .57f, h * .36f)
+                    cubicTo(w * .95f, h * .36f, w * .95f, h * .85f, w * .57f, h * .85f)
+                    lineTo(w * .4f, h * .85f)
+                }
+                val arrow = Path().apply {
+                    moveTo(w * .38f, h * .16f)
+                    lineTo(w * .18f, h * .36f)
+                    lineTo(w * .38f, h * .56f)
+                }
+                val stroke = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round,
+                    join = androidx.compose.ui.graphics.StrokeJoin.Round)
+                drawPath(curve, color, style = stroke)
+                drawPath(arrow, color, style = stroke)
+            }
+            "new" -> {
+                drawLine(color, Offset(w * .2f, h * .5f), Offset(w * .8f, h * .5f), 1.8.dp.toPx(), StrokeCap.Round)
+                drawLine(color, Offset(w * .5f, h * .2f), Offset(w * .5f, h * .8f), 1.8.dp.toPx(), StrokeCap.Round)
             }
             "erase" -> {
                 val eraser = Path().apply {

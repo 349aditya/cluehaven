@@ -294,7 +294,7 @@ private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
                     else -> SudokuArtwork(64.dp)
                 }
                 }
-                PuzzleAction(if (resume == null) "Play today's puzzle" else "Continue", "new",
+                PuzzleAction(if (resume == null) "Play today's puzzle" else "Continue", "play",
                     Modifier.fillMaxWidth(), primary = true) { openGame(resume?.route ?: "sudoku_daily") }
             }
         }

@@ -71,7 +71,7 @@ fun ProgressScreen(padding: PaddingValues) {
             }
         }
         Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ProgressCard("Sudoku", Modifier.weight(1f), { SudokuArtwork(38.dp) },
+            ProgressCard("Sudoku", Modifier.weight(1f), { SudokuBadge(38.dp) },
                 sudoku.total.toString(), "puzzles solved", "Daily: ${sudoku.dailySolved} · Hints: ${sudoku.solvedWithHints}")
             ProgressCard("Tile Merge", Modifier.weight(1f), { TileMergeArtwork(38.dp) },
                 (tile?.bestScore ?: 0).toString(), "best score", "${milestones.size} runs reached 2048")

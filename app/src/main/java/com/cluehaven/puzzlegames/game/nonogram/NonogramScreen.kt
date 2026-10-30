@@ -152,7 +152,8 @@ private fun NonogramPlay(state: NonogramState, padding: PaddingValues, cross: Bo
         NonogramBoard(state, selected, mark)
         if (state.isComplete) CompletionCard("Picture complete!", "Your progress is saved.", "Choose another", back)
         else {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 32.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.widthIn(max = 520.dp).fillMaxWidth().align(Alignment.CenterHorizontally)
+                .padding(horizontal = 36.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Surface(onClick = { selectMode(false) }, modifier = Modifier.weight(1f),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                     color = if (!cross) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
@@ -180,10 +181,11 @@ private fun NonogramBoard(state: NonogramState, selected: Int, mark: (Int) -> Un
     val depth = columns.maxOf { it.size }
     val selectedRow = if (selected in state.cells.indices) selected / puzzle.size else -1
     val selectedColumn = if (selected in state.cells.indices) selected % puzzle.size else -1
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
     Column(Modifier.widthIn(max = 520.dp).fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().height((depth * 18 + 8).dp),
             verticalAlignment = Alignment.Bottom) {
-            Spacer(Modifier.weight(2f))
+            Spacer(Modifier.width(36.dp))
             columns.forEachIndexed { column, clue ->
                 Text(clue.joinToString("\n"), Modifier.weight(1f).padding(bottom = 4.dp)
                     .semantics { contentDescription = "Column ${column + 1} clues ${clue.joinToString()}" },
@@ -192,10 +194,11 @@ private fun NonogramBoard(state: NonogramState, selected: Int, mark: (Int) -> Un
                     textAlign = TextAlign.Center, fontSize = 12.sp, lineHeight = 18.sp,
                     fontWeight = FontWeight.Bold)
             }
+            Spacer(Modifier.width(36.dp))
         }
         repeat(puzzle.size) { row ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(rows[row].joinToString(" "), Modifier.weight(2f).padding(end = 5.dp)
+                Text(rows[row].joinToString(" "), Modifier.width(36.dp).padding(end = 5.dp)
                     .semantics { contentDescription = "Row ${row + 1} clues ${rows[row].joinToString()}" },
                     color = if (NonogramEngine.clues(state.cells.subList(row * puzzle.size, (row + 1) * puzzle.size).map { if (it == 1) 1 else 0 }) == rows[row])
                         MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
@@ -229,7 +232,9 @@ private fun NonogramBoard(state: NonogramState, selected: Int, mark: (Int) -> Un
                         if (cell == 2) Text("×", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 18.sp)
                     }
                 }
-                }
+                Spacer(Modifier.width(36.dp))
+            }
         }
+    }
     }
 }

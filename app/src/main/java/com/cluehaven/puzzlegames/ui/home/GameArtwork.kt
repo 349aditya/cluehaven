@@ -45,6 +45,28 @@ private val sudokuPreview = listOf(
 )
 
 @Composable
+fun SudokuBadge(dimension: Dp) {
+    Box(Modifier.size(dimension).background(Cream, RoundedCornerShape(7.dp))
+        .padding(3.dp).clearAndSetSemantics { }) {
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            listOf(listOf(1, 4), listOf(3, 2)).forEach { digits ->
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    digits.forEach { digit ->
+                        Box(Modifier.weight(1f).fillMaxHeight()
+                            .background(Color(0xFFFFFCF6), RoundedCornerShape(2.dp)),
+                            contentAlignment = Alignment.Center) {
+                            Text("$digit", color = DarkTeal, fontWeight = FontWeight.SemiBold,
+                                fontSize = (dimension.value * .28f).sp,
+                                lineHeight = (dimension.value * .32f).sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun PipeArtwork(dimension: Dp) {
     Canvas(Modifier.size(dimension).clearAndSetSemantics { }) {
         val unit = size.minDimension / 100f
