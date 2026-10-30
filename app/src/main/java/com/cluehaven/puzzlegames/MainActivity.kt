@@ -59,6 +59,7 @@ import com.cluehaven.puzzlegames.data.SettingsRepository
 import com.cluehaven.puzzlegames.ui.home.SudokuArtwork
 import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
 import com.cluehaven.puzzlegames.ui.progress.ProgressScreen
+import com.cluehaven.puzzlegames.game.pipes.PipeScreen
 import com.cluehaven.puzzlegames.game.nonogram.NonogramScreen
 import com.cluehaven.puzzlegames.ui.home.NonogramArtwork
 import kotlinx.coroutines.launch
@@ -91,6 +92,7 @@ private val games = listOf(
     Game("sudoku", "Sudoku", "Number logic", Cream),
     Game("tile_merge", "Tile Merge", "Reach 2048", Mint),
     Game("nonogram", "Nonogram", "Reveal a picture", Gold),
+    Game("pipes", "Pipe Connect", "Connect the network", Coral),
 )
 
 @Composable
@@ -109,7 +111,7 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (visibleRoute != "sudoku" && visibleRoute != "sudoku_daily" &&
-                visibleRoute != "tile_merge" && visibleRoute != "nonogram") {
+                visibleRoute != "tile_merge" && visibleRoute != "nonogram" && visibleRoute != "pipes") {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     listOf("home" to "Home", "progress" to "Progress", "settings" to "Settings")
                         .forEach { (id, label) ->
@@ -150,6 +152,7 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
             )
             visibleRoute == "tile_merge" -> TileMergeScreen(padding) { route = "home" }
             visibleRoute == "nonogram" -> NonogramScreen(padding) { route = "home" }
+            visibleRoute == "pipes" -> PipeScreen(padding) { route = "home" }
             visibleRoute == "progress" -> ProgressScreen(padding)
             visibleRoute == "settings" -> SettingsScreen(padding, darkTheme, setDarkTheme)
             else -> HomeScreen(padding) { route = it }
@@ -293,6 +296,7 @@ private fun GameCard(game: Game, modifier: Modifier, onClick: () -> Unit) {
                     "sudoku" -> SudokuArtwork(96.dp)
                     "tile_merge" -> TileMergeArtwork(96.dp)
                     "nonogram" -> NonogramArtwork(96.dp)
+                    "pipes" -> Text("╋", fontSize = 80.sp, color = Teal)
                 }
             }
             Column {

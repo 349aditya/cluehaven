@@ -1,8 +1,10 @@
 # Cluehaven Android app
 
-Early development build with Sudoku, Tile Merge (2048-style), and Nonogram.
+Early development build with Sudoku, Tile Merge (2048-style), Nonogram, and Pipe Connect.
 
 ## Current build
+
+- Pipe Connect: generated 4×4 and 6×6 networks, rotating tiles, connection highlighting, undo, one free hint, and save/resume for each size.
 
 - Nonogram: eight uniquely solvable 5×5 and 10×10 starter boards, a daily rotation, fill/cross controls, undo, one hint, saved boards, and completion statistics.
 
