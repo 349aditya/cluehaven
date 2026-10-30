@@ -20,7 +20,7 @@ Early development build with Sudoku, Tile Merge (2048-style), Nonogram, and Pipe
 - Progress records each solved Sudoku once, tracks daily Sudoku streaks, and counts runs that reach 2048. Existing saved puzzles and runs are preserved when the database upgrades.
 - Previously saved daily Sudoku completions are backfilled. Older free-play boards and Tile Merge runs that were replaced before this build were never stored.
 - Mini Crosswords and Word Guess are deferred and are hidden from the app for now.
-- Nonogram: eight starter puzzles in 5×5 and 10×10 sizes, fill/cross controls, undo, one free hint per puzzle, and automatic local save/resume for each board. The daily puzzle rotates through the starter pack; Progress tracks starter and daily completions.
+- Nonogram: 40 puzzles (20 each in 5×5 and 10×10 sizes), with Easy/Medium/Hard labels, fill/cross controls, undo, one free hint per puzzle, and automatic local save/resume for each board. The daily puzzle rotates through the expanded pack from 31 October 2026; earlier dates retain the original rotation. Progress tracks pack and daily completions. The original eight board IDs and layouts are unchanged, and saved daily sessions retain their source puzzle.
 - Release builds do not request ads yet. Production AdMob IDs, consent handling, hint credits, between-puzzle ads, content packs, and final icon are not yet integrated.
 
 ## Run on the connected phone

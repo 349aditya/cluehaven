@@ -116,7 +116,10 @@ fun NonogramScreen(padding: PaddingValues, initialId: String? = null, goBack: ()
                                             Size(unit * .85f, unit * .85f))
                                     }
                                 }
-                                Text("Picture ${NonogramEngine.puzzles.indexOf(puzzle) % 4 + 1}", fontWeight = FontWeight.Bold)
+                                Text(if (progress?.isComplete == true) puzzle.title else "Picture ${puzzle.number}",
+                                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text(puzzle.difficulty.label, style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(when {
                                     progress?.isComplete == true -> "✓ Solved"
                                     progress?.cells?.any { it != 0 } == true -> "◷ In progress"
@@ -128,7 +131,9 @@ fun NonogramScreen(padding: PaddingValues, initialId: String? = null, goBack: ()
                     repeat(3 - pair.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
-            Text("8 starter puzzles · Daily rotates through this pack\nProgress saves automatically on this device.",
+            val total = NonogramEngine.puzzles.count { it.size == filterSize }
+            val solved = NonogramEngine.puzzles.count { it.size == filterSize && saved[it.id]?.isComplete == true }
+            Text("$solved / $total solved in ${filterSize}×$filterSize · ${NonogramEngine.puzzles.size} puzzles total\nProgress saves automatically on this device.",
                 style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
         }
     }
@@ -147,10 +152,10 @@ private fun NonogramPlay(state: NonogramState, padding: PaddingValues, cross: Bo
     }) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             StatusPill("${state.puzzle.size}×${state.puzzle.size} · " +
-                if (state.puzzle.id.startsWith("daily-")) "Daily" else "Picture ${NonogramEngine.puzzles.indexOf(state.puzzle) % 4 + 1}")
+                if (state.puzzle.id.startsWith("daily-")) "Daily" else "Picture ${state.puzzle.number} · ${state.puzzle.difficulty.label}")
         }
         NonogramBoard(state, selected, mark)
-        if (state.isComplete) CompletionCard("Picture complete!", "Your progress is saved.", "Choose another", back)
+        if (state.isComplete) CompletionCard("${state.puzzle.title} complete!", "Your progress is saved.", "Choose another", back)
         else {
             Row(Modifier.widthIn(max = 520.dp).fillMaxWidth().align(Alignment.CenterHorizontally)
                 .padding(horizontal = 36.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {

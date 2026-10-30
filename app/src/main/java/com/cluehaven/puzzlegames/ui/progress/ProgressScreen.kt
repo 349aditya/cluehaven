@@ -78,7 +78,7 @@ fun ProgressScreen(padding: PaddingValues) {
         }
         Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ProgressCard("Nonogram", Modifier.weight(1f), { NonogramArtwork(38.dp) },
-                "${nonogram.starterSolved} / 8", "starter puzzles solved", "${nonogram.dailySolved} daily pictures")
+                "${nonogram.starterSolved} / ${NonogramEngine.puzzles.size}", "pack puzzles solved", "${nonogram.dailySolved} daily pictures")
             ProgressCard("Pipe Connect", Modifier.weight(1f), { PipeArtwork(38.dp) },
                 "${pipes.count { it.isComplete }} / 2", "saved boards complete",
                 "${pipes.sumOf { it.moves }} rotations on saved boards")

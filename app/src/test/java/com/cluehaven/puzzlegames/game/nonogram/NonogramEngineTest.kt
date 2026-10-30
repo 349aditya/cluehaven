@@ -12,10 +12,59 @@ class NonogramEngineTest {
     }
 
     @Test fun everyStarterPuzzleHasExactlyOneSolution() {
-        assertEquals(8, NonogramEngine.puzzles.size)
+        assertEquals(40, NonogramEngine.puzzles.size)
+        assertEquals(20, NonogramEngine.puzzles.count { it.size == 5 })
+        assertEquals(20, NonogramEngine.puzzles.count { it.size == 10 })
         NonogramEngine.puzzles.forEach { puzzle ->
             assertEquals(puzzle.id, 1, countSolutions(puzzle))
         }
+    }
+
+    @Test fun originalEightBoardsKeepTheirIdsAndSolutions() {
+        val original = listOf("0111011111111110111000100", "0010001110111110111000100",
+            "0010001110111111010111111", "0010001110111110010001110")
+        for (size in listOf(5, 10)) original.forEachIndexed { index, pattern ->
+            val puzzle = NonogramEngine.puzzles.single { it.id == "pack-$size-$index" }
+            val scale = size / 5
+            val expected = List(size * size) { cell -> pattern[cell / size / scale * 5 + cell % size / scale].digitToInt() }
+            assertEquals(puzzle.id, expected, puzzle.solution)
+        }
+    }
+
+    @Test fun everyBoardHasADistinctLayoutAndStableSourceIdentity() {
+        val puzzles = NonogramEngine.puzzles
+        assertEquals(puzzles.size, puzzles.map { it.id }.toSet().size)
+        assertEquals(puzzles.size, puzzles.map { it.size to it.solution }.toSet().size)
+        assertTrue(puzzles.all { it.sourceId == it.id && it.number in 1..20 && it.title != "Picture" })
+        assertEquals(NonogramDifficulty.entries.toSet(), puzzles.map { it.difficulty }.toSet())
+    }
+
+    @Test fun historicalDailyRotationIsUnchanged() {
+        for (day in 0L..30L) {
+            val date = LocalDate.of(2026, 10, 30).minusDays(day)
+            val index = Math.floorMod(date.toEpochDay(), 8L).toInt()
+            val original = NonogramEngine.puzzles.single { it.id == "pack-${if (index < 4) 5 else 10}-${index % 4}" }
+            assertEquals(original.solution, NonogramEngine.daily(date).solution)
+        }
+    }
+
+    @Test fun expandedDailyRotationVisitsEveryBoardExactlyOnce() {
+        val start = LocalDate.of(2026, 10, 31)
+        val daily = (0L until NonogramEngine.puzzles.size.toLong()).map { NonogramEngine.daily(start.plusDays(it)) }
+        assertEquals(NonogramEngine.puzzles.map { it.sourceId }.toSet(), daily.map { it.sourceId }.toSet())
+        assertEquals(daily.size, daily.map { it.id }.toSet().size)
+    }
+
+    @Test fun oldAndNewDailySavesRestoreTheirOriginalSource() {
+        val date = LocalDate.of(2026, 11, 20)
+        val requested = NonogramEngine.daily(date)
+        val old = NonogramEngine.puzzleForSavedSession(requested, null)
+        assertEquals(NonogramEngine.legacyDaily(date), old)
+        val savedSource = NonogramEngine.puzzles.last()
+        val restored = NonogramEngine.puzzleForSavedSession(requested, savedSource.id)
+        assertEquals(savedSource.solution, restored.solution)
+        assertEquals(requested.id, restored.id)
+        assertEquals(savedSource.id, restored.sourceId)
     }
 
     @Test fun markingTogglingAndUndoRestoreTheBoard() {

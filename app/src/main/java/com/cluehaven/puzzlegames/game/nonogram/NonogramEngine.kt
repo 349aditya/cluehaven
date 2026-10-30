@@ -2,7 +2,17 @@ package com.cluehaven.puzzlegames.game.nonogram
 
 import java.time.LocalDate
 
-data class NonogramPuzzle(val id: String, val size: Int, val solution: List<Int>) {
+enum class NonogramDifficulty(val label: String) { EASY("Easy"), MEDIUM("Medium"), HARD("Hard") }
+
+data class NonogramPuzzle(
+    val id: String,
+    val size: Int,
+    val solution: List<Int>,
+    val title: String = "Picture",
+    val difficulty: NonogramDifficulty = if (size == 5) NonogramDifficulty.EASY else NonogramDifficulty.MEDIUM,
+    val sourceId: String = id,
+) {
+    val number: Int get() = sourceId.substringAfterLast('-').toInt() + 1
     init {
         require(size in setOf(5, 10) && solution.size == size * size)
         require(solution.all { it in 0..1 })
@@ -35,18 +45,36 @@ object NonogramEngine {
         listOf("00100", "01110", "11111", "00100", "01110"),
     )
 
-    val puzzles: List<NonogramPuzzle> = listOf(5, 10).flatMap { size ->
+    private val legacyPuzzles: List<NonogramPuzzle> = listOf(5, 10).flatMap { size ->
         patterns.mapIndexed { index, pattern ->
             val scale = size / 5
             NonogramPuzzle("pack-$size-$index", size, List(size * size) { cell ->
                 pattern[cell / size / scale][cell % size / scale].digitToInt()
-            })
+            }, title = listOf("Balloon", "Diamond", "House", "Tree")[index])
         }
     }
 
+    val puzzles = (legacyPuzzles + NonogramPack.puzzles).sortedWith(compareBy({ it.size }, { it.number }))
+
+    internal fun legacyDaily(date: LocalDate): NonogramPuzzle =
+        legacyPuzzles[Math.floorMod(date.toEpochDay(), legacyPuzzles.size.toLong()).toInt()]
+            .copy(id = "daily-$date")
+
     fun daily(date: LocalDate): NonogramPuzzle {
+        // Freeze the old rotation for dates before this pack's release.
+        if (date.isBefore(LocalDate.of(2026, 10, 31))) return legacyDaily(date)
         val base = puzzles[Math.floorMod(date.toEpochDay(), puzzles.size.toLong()).toInt()]
         return base.copy(id = "daily-$date")
+    }
+
+    internal fun puzzleForSavedSession(requested: NonogramPuzzle, sourceId: String?): NonogramPuzzle {
+        if (!requested.id.startsWith("daily-")) {
+            require(sourceId == null || sourceId == requested.id)
+            return requested
+        }
+        // Old saves lack a source ID and always used the original eight-board rotation.
+        if (sourceId == null) return legacyDaily(LocalDate.parse(requested.id.removePrefix("daily-")))
+        return puzzles.first { it.id == sourceId }.copy(id = requested.id)
     }
 
     fun clues(line: List<Int>): List<Int> {
