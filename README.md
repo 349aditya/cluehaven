@@ -1,8 +1,10 @@
 # Cluehaven Android app
 
-Early development build focused on Sudoku and Tile Merge (2048-style).
+Early development build with Sudoku, Tile Merge (2048-style), and Nonogram.
 
 ## Current build
+
+- Nonogram: eight uniquely solvable 5×5 and 10×10 starter boards, a daily rotation, fill/cross controls, undo, one hint, saved boards, and completion statistics.
 
 - Home screen with game navigation, a saved theme setting, and Progress statistics for Sudoku and Tile Merge.
 - Playable offline Sudoku: 6×6 Easy, 9×9 Medium and Hard, a daily 9×9 puzzle, notes, erase, undo, one free hint, and local save/resume.

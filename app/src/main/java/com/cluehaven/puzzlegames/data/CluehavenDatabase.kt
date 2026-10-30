@@ -29,6 +29,9 @@ interface PuzzleSessionDao {
     @Query("SELECT * FROM puzzle_sessions WHERE gameId GLOB 'sudoku_daily-*'")
     suspend fun dailySudokuSessions(): List<PuzzleSession>
 
+    @Query("SELECT * FROM puzzle_sessions WHERE gameId GLOB 'nonogram_*'")
+    fun observeNonogramSessions(): Flow<List<PuzzleSession>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(session: PuzzleSession)
 }

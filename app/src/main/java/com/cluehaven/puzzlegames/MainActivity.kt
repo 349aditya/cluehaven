@@ -59,6 +59,8 @@ import com.cluehaven.puzzlegames.data.SettingsRepository
 import com.cluehaven.puzzlegames.ui.home.SudokuArtwork
 import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
 import com.cluehaven.puzzlegames.ui.progress.ProgressScreen
+import com.cluehaven.puzzlegames.game.nonogram.NonogramScreen
+import com.cluehaven.puzzlegames.ui.home.NonogramArtwork
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -88,6 +90,7 @@ private data class Game(
 private val games = listOf(
     Game("sudoku", "Sudoku", "Number logic", Cream),
     Game("tile_merge", "Tile Merge", "Reach 2048", Mint),
+    Game("nonogram", "Nonogram", "Reveal a picture", Gold),
 )
 
 @Composable
@@ -106,7 +109,7 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (visibleRoute != "sudoku" && visibleRoute != "sudoku_daily" &&
-                visibleRoute != "tile_merge") {
+                visibleRoute != "tile_merge" && visibleRoute != "nonogram") {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     listOf("home" to "Home", "progress" to "Progress", "settings" to "Settings")
                         .forEach { (id, label) ->
@@ -146,6 +149,7 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
                 openDailyOnStart = true,
             )
             visibleRoute == "tile_merge" -> TileMergeScreen(padding) { route = "home" }
+            visibleRoute == "nonogram" -> NonogramScreen(padding) { route = "home" }
             visibleRoute == "progress" -> ProgressScreen(padding)
             visibleRoute == "settings" -> SettingsScreen(padding, darkTheme, setDarkTheme)
             else -> HomeScreen(padding) { route = it }
@@ -222,6 +226,7 @@ private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
                 rowGames.forEach { game ->
                     GameCard(game, Modifier.weight(1f)) { openGame(game.id) }
                 }
+                if (rowGames.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
@@ -287,6 +292,7 @@ private fun GameCard(game: Game, modifier: Modifier, onClick: () -> Unit) {
                 when (game.id) {
                     "sudoku" -> SudokuArtwork(96.dp)
                     "tile_merge" -> TileMergeArtwork(96.dp)
+                    "nonogram" -> NonogramArtwork(96.dp)
                 }
             }
             Column {

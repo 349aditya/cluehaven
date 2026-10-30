@@ -1,5 +1,12 @@
 package com.cluehaven.puzzlegames.ui.home
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -124,6 +131,21 @@ fun TileMergeArtwork(dimension: Dp, modifier: Modifier = Modifier) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun NonogramArtwork(size: Dp) {
+    val picture = listOf("00100", "01110", "11111", "01110", "00100")
+    Canvas(Modifier.size(size).clearAndSetSemantics { }) {
+        val cell = this.size.minDimension / 5
+        picture.forEachIndexed { row, line ->
+            line.forEachIndexed { column, value ->
+                drawRect(if (value == '1') Teal else Cream,
+                    Offset(column * cell + 1.dp.toPx(), row * cell + 1.dp.toPx()),
+                    Size(cell - 2.dp.toPx(), cell - 2.dp.toPx()))
             }
         }
     }

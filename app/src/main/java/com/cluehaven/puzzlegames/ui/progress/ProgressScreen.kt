@@ -37,6 +37,9 @@ import com.cluehaven.puzzlegames.game.tilemerge.TileMergeState
 import com.cluehaven.puzzlegames.game.tilemerge.TileMergeStorage
 import com.cluehaven.puzzlegames.ui.home.SudokuArtwork
 import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
+import com.cluehaven.puzzlegames.game.nonogram.NonogramStorage
+import com.cluehaven.puzzlegames.game.nonogram.NonogramProgress
+import com.cluehaven.puzzlegames.ui.home.NonogramArtwork
 import java.time.LocalDate
 
 @Composable
@@ -47,6 +50,8 @@ fun ProgressScreen(padding: PaddingValues) {
     val tileStorage = remember(context) { TileMergeStorage.get(context) }
     val completions by progress.sudokuCompletions.collectAsState(initial = emptyList())
     val milestones by progress.tileMilestones.collectAsState(initial = emptyList())
+    val nonogramStorage = remember(context) { NonogramStorage.get(context) }
+    val nonogram by nonogramStorage.progress.collectAsState(initial = NonogramProgress())
     val today = remember { LocalDate.now() }
     val sudoku = summarizeSudoku(completions, today)
     var tile by remember { mutableStateOf<TileMergeState?>(null) }
@@ -74,6 +79,14 @@ fun ProgressScreen(padding: PaddingValues) {
             moveCount = tile?.moveCount ?: 0,
             milestoneRuns = milestones.size,
         )
+        Card {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                NonogramArtwork(56.dp)
+                Text("Nonogram", style = MaterialTheme.typography.titleLarge)
+                Metric("Starter puzzles solved", "${nonogram.starterSolved} / 8")
+                Metric("Daily puzzles solved", nonogram.dailySolved.toString())
+            }
+        }
         Text("Progress is saved on this device.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
