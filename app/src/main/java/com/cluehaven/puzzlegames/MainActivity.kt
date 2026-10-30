@@ -56,6 +56,8 @@ import com.cluehaven.puzzlegames.game.tilemerge.TileMergeScreen
 import com.cluehaven.puzzlegames.game.sudoku.SudokuScreen
 import com.cluehaven.puzzlegames.data.AppSettings
 import com.cluehaven.puzzlegames.data.SettingsRepository
+import com.cluehaven.puzzlegames.ui.home.SudokuArtwork
+import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -79,13 +81,12 @@ private data class Game(
     val id: String,
     val title: String,
     val subtitle: String,
-    val symbol: String,
     val accent: Color,
 )
 
 private val games = listOf(
-    Game("sudoku", "Sudoku", "Number logic", "9", Cream),
-    Game("tile_merge", "Tile Merge", "Reach 2048", "2", Mint),
+    Game("sudoku", "Sudoku", "Number logic", Cream),
+    Game("tile_merge", "Tile Merge", "Reach 2048", Mint),
 )
 
 @Composable
@@ -254,10 +255,17 @@ private fun DailyCard(title: String, subtitle: String, modifier: Modifier, onCli
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
     ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text(subtitle, style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SudokuArtwork(60.dp)
+            Column {
+                Text(title, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(subtitle, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -266,19 +274,23 @@ private fun DailyCard(title: String, subtitle: String, modifier: Modifier, onCli
 private fun GameCard(game: Game, modifier: Modifier, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(132.dp),
+        modifier = modifier.height(186.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
     ) {
         Column(
-            Modifier.fillMaxSize().padding(14.dp),
+            Modifier.fillMaxSize().padding(12.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Box(
-                Modifier.size(42.dp).background(game.accent, RoundedCornerShape(11.dp)),
+                Modifier.fillMaxWidth().height(112.dp)
+                    .background(game.accent.copy(alpha = 0.22f), RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(game.symbol, fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Teal)
+                when (game.id) {
+                    "sudoku" -> SudokuArtwork(96.dp)
+                    "tile_merge" -> TileMergeArtwork(96.dp)
+                }
             }
             Column {
                 Text(game.title, fontWeight = FontWeight.Bold, maxLines = 1)
