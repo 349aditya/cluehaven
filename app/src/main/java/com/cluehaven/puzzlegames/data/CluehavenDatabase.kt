@@ -23,6 +23,8 @@ data class PuzzleSession(
 
 @Dao
 interface PuzzleSessionDao {
+    @Query("SELECT * FROM puzzle_sessions ORDER BY updatedAt DESC")
+    fun observeSessions(): Flow<List<PuzzleSession>>
     @Query("SELECT * FROM puzzle_sessions WHERE gameId = :gameId LIMIT 1")
     suspend fun get(gameId: String): PuzzleSession?
 

@@ -1,6 +1,14 @@
 package com.cluehaven.puzzlegames.game.tilemerge
 
 import android.app.Activity
+import com.cluehaven.puzzlegames.ui.*
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
+import com.cluehaven.puzzlegames.ui.LocalReducedMotion
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
@@ -63,6 +71,7 @@ import kotlin.math.abs
 
 @Composable
 fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
+    val feedback = com.cluehaven.puzzlegames.ui.LocalGameFeedback.current
     val context = LocalContext.current
     val storage = remember(context) { TileMergeStorage.get(context) }
     val progress = remember(context) { ProgressRepository.get(context) }
@@ -100,6 +109,7 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
     }
 
     fun update(next: TileMergeState) {
+        feedback()
         loadedGame = next
         storage.save(next)
         if (!game.reached2048 && next.reached2048) progress.recordTile2048(next)
@@ -136,30 +146,20 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = goBack, contentPadding = PaddingValues(0.dp)) {
-                Text("‹  Back", fontSize = 18.sp)
-            }
-            Text(
-                "Tile Merge",
-                modifier = Modifier.padding(start = 12.dp),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        GameHeader("Tile Merge", goBack)
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ScoreCard("SCORE", game.score, Modifier.weight(1f))
             ScoreCard("BEST", game.bestScore, Modifier.weight(1f))
         }
 
-        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+        BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1f)) {
             val boardSize = minOf(maxWidth, maxHeight)
             Box(
                 modifier = Modifier
                     .size(boardSize)
                     .align(Alignment.Center)
-                    .background(Color(0xFFD8DED8), RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
                     .padding(7.dp)
                     .pointerInput(game) {
                     var dragX = 0f
@@ -191,11 +191,13 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             for (column in 0..3) {
                                 val value = game.board[row * 4 + column]
+                                val animatedColor by animateColorAsState(tileColor(value),
+                                    tween(if (LocalReducedMotion.current) 0 else 180), label = "Tile color")
                                 Box(
                                     Modifier
                                         .weight(1f)
                                         .aspectRatio(1f)
-                                        .background(tileColor(value), RoundedCornerShape(12.dp))
+                                        .background(animatedColor, RoundedCornerShape(12.dp))
                                         .semantics {
                                             contentDescription = if (value == 0) "Empty tile" else "Tile $value"
                                         },
@@ -207,9 +209,9 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
                                             color = DarkTeal,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = when {
-                                                value >= 1024 -> 20.sp
-                                                value >= 128 -> 23.sp
-                                                else -> 27.sp
+                                                value >= 1024 -> 18.sp
+                                                value >= 128 -> 21.sp
+                                                else -> 24.sp
                                             },
                                         )
                                     }
@@ -233,6 +235,7 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
         )
 
+        Spacer(Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (game.isGameOver) {
                 Button(onClick = { showGameOverDialog = true }, modifier = Modifier.weight(1f)) {
@@ -243,15 +246,9 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
                     modifier = Modifier.weight(1f),
                 ) { Text("New run") }
             } else {
-                Button(
-                    onClick = { update(TileMergeEngine.undo(game)) },
-                    enabled = game.undosUsed == 0 && game.history.isNotEmpty(),
-                    modifier = Modifier.weight(1f),
-                ) { Text(if (game.undosUsed == 0) "Undo · 1 free" else "Undo used") }
-                OutlinedButton(
-                    onClick = { showRestartDialog = true },
-                    modifier = Modifier.weight(1f),
-                ) { Text("New run") }
+                PuzzleAction("Undo", "undo", Modifier.weight(1f),
+                    enabled = game.undosUsed == 0 && game.history.isNotEmpty()) { update(TileMergeEngine.undo(game)) }
+                PuzzleAction("New run", "new", Modifier.weight(1f), primary = true) { showRestartDialog = true }
             }
         }
     }
@@ -394,13 +391,13 @@ private fun ScoreCard(label: String, score: Int, modifier: Modifier = Modifier) 
 }
 
 private fun tileColor(value: Int): Color = when (value) {
-    0 -> Color(0xFFE8EDE8)
+    0 -> Color(0xFFF4EFE6)
     2 -> Cream
-    4 -> Color(0xFFEAD6AA)
+    4 -> Color(0xFFBFE5D2)
     8 -> Gold
     16 -> Coral
-    32 -> Mint
-    64 -> Color(0xFF68B6A7)
+    32 -> Color(0xFFF4947B)
+    64 -> Color(0xFFEB7E67)
     128 -> Color(0xFF7EC5CC)
     256 -> Color(0xFF9DB7E6)
     512 -> Color(0xFFBBA7D9)

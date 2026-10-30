@@ -16,3 +16,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Generated device captures and local commit preparation files
+/output/

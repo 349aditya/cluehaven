@@ -1,6 +1,13 @@
 package com.cluehaven.puzzlegames.game.sudoku
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
+import com.cluehaven.puzzlegames.ui.*
+import com.cluehaven.puzzlegames.ui.StatusPill
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +32,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,7 +64,9 @@ fun SudokuScreen(
     padding: PaddingValues,
     goBack: () -> Unit,
     openDailyOnStart: Boolean = false,
+    resumeFreeOnStart: Boolean = false,
 ) {
+    val feedback = com.cluehaven.puzzlegames.ui.LocalGameFeedback.current
     val context = LocalContext.current
     val storage = remember(context) { SudokuStorage.get(context) }
     val progress = remember(context) { ProgressRepository.get(context) }
@@ -68,7 +78,7 @@ fun SudokuScreen(
     var loading by remember { mutableStateOf(true) }
     var pendingDifficulty by remember { mutableStateOf<SudokuDifficulty?>(null) }
     var showSolved by remember { mutableStateOf(false) }
-    var activeMode by rememberSaveable { mutableStateOf(if (openDailyOnStart) "daily" else "") }
+    var activeMode by rememberSaveable { mutableStateOf(if (openDailyOnStart) "daily" else if (resumeFreeOnStart) "free" else "") }
 
     BackHandler {
         when {
@@ -106,6 +116,7 @@ fun SudokuScreen(
     }
 
     fun update(next: SudokuState) {
+        feedback()
         val wasComplete = game?.isComplete == true
         game = next
         activeMode = if (next.mode == SudokuMode.FREE) "free" else "daily"
@@ -198,12 +209,10 @@ private fun SudokuChooser(
     startFree: (SudokuDifficulty) -> Unit,
 ) {
     Column(
-        Modifier.fillMaxSize().padding(padding).padding(20.dp),
+        Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        TextButton(onClick = goBack, contentPadding = PaddingValues(0.dp)) { Text("‹  Back") }
-        Text("Sudoku", style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold)
+        GameHeader("Sudoku", goBack)
         Text("Fill every row, column, and box without repeating a number.",
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Card(
@@ -243,79 +252,49 @@ private fun SudokuPlay(
     goBack: () -> Unit,
     update: (SudokuState) -> Unit,
 ) {
-    Column(
-        Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(Modifier.fillMaxWidth().height(48.dp)) {
-            TextButton(
-                onClick = goBack,
-                modifier = Modifier.align(Alignment.CenterStart),
-                contentPadding = PaddingValues(0.dp),
-            ) { Text("‹  Back") }
-            Text(
-                "Sudoku",
-                modifier = Modifier.align(Alignment.Center),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
-            val side = minOf(maxWidth, maxHeight)
-            SudokuBoard(state, Modifier.size(side).align(Alignment.Center)) { cell ->
-                update(SudokuEngine.select(state, cell))
+    PuzzlePage(padding, "Sudoku", goBack, footer = {
+        Row(Modifier.fillMaxWidth()) {
+            ToolButton("Notes", "notes", Modifier.weight(1f), enabled = !state.isComplete, selected = state.noteMode) {
+                update(state.copy(noteMode = !state.noteMode))
+            }
+            ToolButton("Erase", "erase", Modifier.weight(1f), enabled = !state.isComplete) { update(SudokuEngine.erase(state)) }
+            ToolButton("Undo", "undo", Modifier.weight(1f), enabled = state.history.isNotEmpty() && !state.isComplete) {
+                update(SudokuEngine.undo(state))
+            }
+            ToolButton("Hint", "hint", Modifier.weight(1f), enabled = state.hintsUsed == 0 && !state.isComplete) {
+                update(SudokuEngine.freeHint(state))
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            (1..state.puzzle.size).forEach { digit ->
-                Box(
-                    Modifier.weight(1f).height(46.dp)
-                        .background(Mint.copy(alpha = 0.45f), RoundedCornerShape(7.dp))
-                        .clickable(enabled = !state.isComplete) {
-                            update(SudokuEngine.enter(state, digit))
+    }) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            StatusPill("${state.puzzle.difficulty.label()} · ${state.puzzle.size}×${state.puzzle.size}")
+            if (state.mode == SudokuMode.DAILY) Text("☼  Daily", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary)
+        }
+        SudokuBoard(state, Modifier.widthIn(max = 460.dp).fillMaxWidth().aspectRatio(1f)) {
+            update(SudokuEngine.select(state, it))
+        }
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val columns = if (state.puzzle.size == 9) 5 else 6
+            val keyWidth = (maxWidth - 6.dp * (columns - 1)) / columns
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                (1..state.puzzle.size).toList().chunked(columns).forEach { digits ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+                        digits.forEach { digit ->
+                            Surface(onClick = { update(SudokuEngine.enter(state, digit)) }, enabled = !state.isComplete,
+                                modifier = Modifier.width(keyWidth).height(48.dp).semantics { contentDescription = "Enter $digit" },
+                                shape = RoundedCornerShape(12.dp), shadowElevation = 1.dp,
+                                border = androidx.compose.foundation.BorderStroke(.5.dp, MaterialTheme.colorScheme.outlineVariant),
+                                color = MaterialTheme.colorScheme.surface) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("$digit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
-                        .semantics { contentDescription = "Enter $digit" },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("$digit", fontWeight = FontWeight.Bold, color = DarkTeal,
-                        style = MaterialTheme.typography.titleMedium)
+                    }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            OutlinedButton(
-                onClick = { update(state.copy(noteMode = !state.noteMode)) },
-                enabled = !state.isComplete,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 2.dp),
-            ) { Text(if (state.noteMode) "Notes ✓" else "Notes", maxLines = 1) }
-            OutlinedButton(
-                onClick = { update(SudokuEngine.erase(state)) },
-                enabled = !state.isComplete,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 2.dp),
-            ) { Text("Erase", maxLines = 1) }
-            OutlinedButton(
-                onClick = { update(SudokuEngine.undo(state)) },
-                enabled = state.history.isNotEmpty() && !state.isComplete,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 2.dp),
-            ) { Text("Undo", maxLines = 1) }
-            Button(
-                onClick = { update(SudokuEngine.freeHint(state)) },
-                enabled = state.hintsUsed == 0 && !state.isComplete,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 2.dp),
-            ) { Text("Hint", maxLines = 1) }
-        }
-        Text(
-            if (state.hintsUsed == 0) "One free hint available"
-            else "Free hint used · More hint options coming later",
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -336,11 +315,14 @@ private fun SudokuBoard(state: SudokuState, modifier: Modifier, select: (Int) ->
                         val given = state.puzzle.givens[index] != 0
                         val selected = index == state.selected
                         val related = row == state.selected / size ||
-                            column == state.selected % size
+                            column == state.selected % size ||
+                            (row / boxRows == state.selected / size / boxRows &&
+                                column / boxColumns == state.selected % size / boxColumns)
                         val wrong = value != 0 && value != state.puzzle.solution[index]
                         val background = when {
-                            selected -> Mint
-                            related -> Mint.copy(alpha = 0.25f)
+                            selected -> MaterialTheme.colorScheme.primaryContainer
+                            value != 0 && value == state.values[state.selected] -> MaterialTheme.colorScheme.secondaryContainer
+                            related -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                             else -> MaterialTheme.colorScheme.surface
                         }
                         val description = buildString {
@@ -353,6 +335,7 @@ private fun SudokuBoard(state: SudokuState, modifier: Modifier, select: (Int) ->
                         Box(
                             Modifier.weight(1f).fillMaxHeight()
                                 .background(background)
+                                .border(if (selected) 2.dp else 0.dp, if (selected) gridColor else Color.Transparent)
                                 .clickable { select(index) }
                                 .semantics { contentDescription = description },
                             contentAlignment = Alignment.Center,
@@ -360,14 +343,14 @@ private fun SudokuBoard(state: SudokuState, modifier: Modifier, select: (Int) ->
                             if (value != 0) {
                                 Text(
                                     "$value",
-                                    fontWeight = if (given) FontWeight.Bold else FontWeight.Medium,
+                                    fontWeight = if (given) FontWeight.Medium else FontWeight.Normal,
                                     color = when {
                                         wrong -> Coral
-                                        selected -> DarkTeal
+                                        selected -> MaterialTheme.colorScheme.onPrimaryContainer
                                         given -> givenColor
                                         else -> gridColor
                                     },
-                                    fontSize = if (size == 6) 26.sp else 20.sp,
+                                    fontSize = if (size == 6) 24.sp else 18.sp,
                                 )
                             } else if (state.notes[index] != 0) {
                                 Column(Modifier.fillMaxSize()) {
@@ -403,13 +386,13 @@ private fun SudokuBoard(state: SudokuState, modifier: Modifier, select: (Int) ->
                     if (verticalThick) gridColor else Color(0xFFB7C7C4),
                     androidx.compose.ui.geometry.Offset(x, 0f),
                     androidx.compose.ui.geometry.Offset(x, this.size.height),
-                    if (verticalThick) 2.dp.toPx() else 0.6.dp.toPx(),
+                    if (verticalThick) 1.2.dp.toPx() else 0.4.dp.toPx(),
                 )
                 drawLine(
                     if (horizontalThick) gridColor else Color(0xFFB7C7C4),
                     androidx.compose.ui.geometry.Offset(0f, y),
                     androidx.compose.ui.geometry.Offset(this.size.width, y),
-                    if (horizontalThick) 2.dp.toPx() else 0.6.dp.toPx(),
+                    if (horizontalThick) 1.2.dp.toPx() else 0.4.dp.toPx(),
                 )
             }
         }

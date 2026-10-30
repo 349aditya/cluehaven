@@ -1,200 +1,111 @@
 package com.cluehaven.puzzlegames.ui.progress
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.cluehaven.puzzlegames.data.ProgressRepository
-import com.cluehaven.puzzlegames.data.SudokuStats
-import com.cluehaven.puzzlegames.data.summarizeSudoku
+import androidx.compose.ui.platform.LocalContext
+import com.cluehaven.puzzlegames.data.*
 import com.cluehaven.puzzlegames.game.sudoku.SudokuStorage
-import com.cluehaven.puzzlegames.game.tilemerge.TileMergeState
 import com.cluehaven.puzzlegames.game.tilemerge.TileMergeStorage
-import com.cluehaven.puzzlegames.ui.home.SudokuArtwork
-import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
-import com.cluehaven.puzzlegames.game.nonogram.NonogramStorage
-import com.cluehaven.puzzlegames.game.nonogram.NonogramProgress
-import com.cluehaven.puzzlegames.ui.home.NonogramArtwork
+import com.cluehaven.puzzlegames.game.tilemerge.TileMergeState
+import com.cluehaven.puzzlegames.game.nonogram.*
+import com.cluehaven.puzzlegames.game.pipes.*
+import com.cluehaven.puzzlegames.ui.home.*
 import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 
 @Composable
 fun ProgressScreen(padding: PaddingValues) {
     val context = LocalContext.current
-    val progress = remember(context) { ProgressRepository.get(context) }
-    val sudokuStorage = remember(context) { SudokuStorage.get(context) }
-    val tileStorage = remember(context) { TileMergeStorage.get(context) }
+    val progress = remember { ProgressRepository.get(context) }
+    val nonogramStorage = remember { NonogramStorage.get(context) }
     val completions by progress.sudokuCompletions.collectAsState(initial = emptyList())
     val milestones by progress.tileMilestones.collectAsState(initial = emptyList())
-    val nonogramStorage = remember(context) { NonogramStorage.get(context) }
     val nonogram by nonogramStorage.progress.collectAsState(initial = NonogramProgress())
-    val today = remember { LocalDate.now() }
+    val today = LocalDate.now()
     val sudoku = summarizeSudoku(completions, today)
     var tile by remember { mutableStateOf<TileMergeState?>(null) }
-
-    LaunchedEffect(sudokuStorage, tileStorage, today) {
-        sudokuStorage.load(SudokuStorage.FREE_KEY)?.let(progress::recordSudoku)
-        sudokuStorage.completedDailyPuzzles().forEach(progress::recordSudoku)
-        tile = tileStorage.load().also(progress::recordTile2048)
+    var pipes by remember { mutableStateOf<List<PipeState>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        val storage = SudokuStorage.get(context)
+        storage.load(SudokuStorage.FREE_KEY)?.let(progress::recordSudoku)
+        storage.completedDailyPuzzles().forEach(progress::recordSudoku)
+        tile = TileMergeStorage.get(context).load().also(progress::recordTile2048)
+        val pipeStorage = PipeStorage.get(context)
+        pipes = listOf(4, 6).map { pipeStorage.load(it) }
     }
-
-    Column(
-        Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-        Text("Progress", style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold)
-        Text("Your puzzles, your pace",
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        SudokuProgressCard(sudoku)
-        TileMergeProgressCard(
-            bestScore = tile?.bestScore ?: 0,
-            currentScore = tile?.score ?: 0,
-            highestTile = tile?.board?.maxOrNull() ?: 0,
-            moveCount = tile?.moveCount ?: 0,
-            milestoneRuns = milestones.size,
-        )
-        Card {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                NonogramArtwork(56.dp)
-                Text("Nonogram", style = MaterialTheme.typography.titleLarge)
-                Metric("Starter puzzles solved", "${nonogram.starterSolved} / 8")
-                Metric("Daily puzzles solved", nonogram.dailySolved.toString())
-            }
+    Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
+            Text("Progress", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
-        Text("Progress is saved on this device.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun SudokuProgressCard(stats: SudokuStats) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(18.dp),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SudokuArtwork(56.dp)
-                Column {
-                    Text("Sudoku", style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold)
-                    Text("6×6 and 9×9 puzzles",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall)
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Daily Sudoku streak · ${sudoku.dailyStreak} days", fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    (6 downTo 0).forEach { ago ->
+                        val day = today.minusDays(ago.toLong())
+                        val solved = completions.any { it.mode == "DAILY" && it.puzzleId == "daily-$day" }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Surface(shape = CircleShape, color = if (solved) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surface, modifier = Modifier.size(30.dp)) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(if (solved) "✓" else "·", color = if (solved) MaterialTheme.colorScheme.onPrimary
+                                        else MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            Text(day.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                                style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 }
             }
-            HorizontalDivider()
-            Metric("Puzzles solved", stats.total.toString())
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallMetric("Easy", stats.easy.toString(), Modifier.weight(1f))
-                SmallMetric("Medium", stats.medium.toString(), Modifier.weight(1f))
-                SmallMetric("Hard", stats.hard.toString(), Modifier.weight(1f))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallMetric("Daily solved", stats.dailySolved.toString(), Modifier.weight(1f))
-                SmallMetric("Daily streak", "${stats.dailyStreak} days", Modifier.weight(1f))
-            }
-            Text(
-                if (stats.todayComplete) "Today's Sudoku is complete"
-                else "Today's Sudoku is waiting for you",
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium,
-            )
         }
+        Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ProgressCard("Sudoku", Modifier.weight(1f), { SudokuArtwork(38.dp) },
+                sudoku.total.toString(), "puzzles solved", "Daily: ${sudoku.dailySolved} · Hints: ${sudoku.solvedWithHints}")
+            ProgressCard("Tile Merge", Modifier.weight(1f), { TileMergeArtwork(38.dp) },
+                (tile?.bestScore ?: 0).toString(), "best score", "${milestones.size} runs reached 2048")
+        }
+        Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ProgressCard("Nonogram", Modifier.weight(1f), { NonogramArtwork(38.dp) },
+                "${nonogram.starterSolved} / 8", "starter puzzles solved", "${nonogram.dailySolved} daily pictures")
+            ProgressCard("Pipe Connect", Modifier.weight(1f), { PipeArtwork(38.dp) },
+                "${pipes.count { it.isComplete }} / 2", "saved boards complete",
+                "${pipes.sumOf { it.moves }} rotations on saved boards")
+        }
+        Text("Saved on this device · Pipe Connect shows your two current boards.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun TileMergeProgressCard(
-    bestScore: Int,
-    currentScore: Int,
-    highestTile: Int,
-    moveCount: Int,
-    milestoneRuns: Int,
-) {
-    Card(
+private fun ProgressCard(title: String, modifier: Modifier, artwork: @Composable () -> Unit,
+    value: String, label: String, detail: String) {
+    Card(modifier = modifier.fillMaxHeight(),
+        border = androidx.compose.foundation.BorderStroke(.5.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(18.dp),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TileMergeArtwork(56.dp)
-                Column {
-                    Text("Tile Merge", style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold)
-                    Text("Keep building toward 2048",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall)
-                }
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                artwork()
+                Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                    minLines = 2)
             }
-            HorizontalDivider()
-            Metric("Best score", bestScore.toString())
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallMetric("Current score", currentScore.toString(), Modifier.weight(1f))
-                SmallMetric("Highest tile now", highestTile.toString(), Modifier.weight(1f))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallMetric("Moves this run", moveCount.toString(), Modifier.weight(1f))
-                SmallMetric("2048 runs", milestoneRuns.toString(), Modifier.weight(1f))
-            }
-            if (bestScore == 0 && moveCount == 0) {
-                Text("Play a run to start tracking your score.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Text(value, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold)
+            Text(label, style = MaterialTheme.typography.bodySmall, minLines = 2)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text(detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, minLines = 2)
         }
-    }
-}
-
-@Composable
-private fun Metric(label: String, value: String) {
-    Column {
-        Text(value, fontSize = 32.sp, fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary)
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun SmallMetric(label: String, value: String, modifier: Modifier) {
-    Column(
-        modifier.background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(value, style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold)
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

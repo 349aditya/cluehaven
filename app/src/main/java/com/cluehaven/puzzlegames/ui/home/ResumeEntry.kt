@@ -1,0 +1,35 @@
+package com.cluehaven.puzzlegames.ui.home
+
+import com.cluehaven.puzzlegames.data.PuzzleSession
+import com.cluehaven.puzzlegames.game.pipes.PipeEngine
+import com.cluehaven.puzzlegames.game.tilemerge.TileMergeEngine
+import org.json.JSONObject
+import java.time.LocalDate
+
+data class ResumeEntry(val title: String, val route: String)
+
+fun resumeEntry(session: PuzzleSession): ResumeEntry? = runCatching {
+    val json = JSONObject(session.payload)
+    fun values(key: String): List<Int> = json.getJSONArray(key).let { array ->
+        (0 until array.length()).map { array.getInt(it) }
+    }
+    when {
+        session.gameId.startsWith("sudoku_") -> {
+            if (values("values") == values("solution")) null
+            else if (session.gameId == "sudoku_free") ResumeEntry("Sudoku · Your saved board", "sudoku|free")
+            else if (session.gameId == "sudoku_daily-${LocalDate.now()}")
+                ResumeEntry("Today's Sudoku", "sudoku_daily") else null
+        }
+        session.gameId == "tile_merge" -> if (TileMergeEngine.canMove(values("board")))
+            ResumeEntry("Tile Merge · Score ${json.getInt("score")}", "tile_merge") else null
+        session.gameId.startsWith("nonogram_") -> if (!json.optBoolean("complete"))
+            ResumeEntry("Nonogram · Your saved picture", "nonogram|${session.gameId.removePrefix("nonogram_")}") else null
+        session.gameId.startsWith("pipes_") -> {
+            val size = session.gameId.removePrefix("pipes_").toInt()
+            val tiles = values("tiles")
+            if (PipeEngine.noLeaks(size, tiles) && PipeEngine.connected(size, tiles).size == tiles.size) null
+            else ResumeEntry("Pipe Connect · $size×$size network", "pipes|$size")
+        }
+        else -> null
+    }
+}.getOrNull()

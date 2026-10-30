@@ -1,5 +1,6 @@
 package com.cluehaven.puzzlegames.ui.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.CornerRadius
@@ -7,7 +8,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +43,56 @@ private val sudokuPreview = listOf(
     "...6.2",
     "61....",
 )
+
+@Composable
+fun PipeArtwork(dimension: Dp) {
+    Canvas(Modifier.size(dimension).clearAndSetSemantics { }) {
+        val unit = size.minDimension / 100f
+        val board = Size(96 * unit, 94 * unit)
+        drawRoundRect(DarkTeal.copy(alpha = 0.14f), Offset(2 * unit, 6 * unit),
+            board, CornerRadius(13 * unit))
+        drawRoundRect(DarkTeal, Offset(2 * unit, 2 * unit), board, CornerRadius(13 * unit))
+        repeat(3) { row ->
+            repeat(3) { column ->
+                drawRoundRect(Color(0xFFEAF4EF),
+                    Offset((8 + column * 29) * unit, (8 + row * 29) * unit),
+                    Size(26 * unit, 26 * unit), CornerRadius(5 * unit))
+            }
+        }
+        fun center(index: Int) = Offset((21 + index % 3 * 29) * unit,
+            (21 + index / 3 * 29) * unit)
+        val route = listOf(0, 1, 4, 3, 6, 7, 8, 5, 2)
+        val pipe = Path().apply {
+            moveTo(center(0).x, center(0).y)
+            route.drop(1).forEach { lineTo(center(it).x, center(it).y) }
+        }
+        drawPath(pipe, DarkTeal, style = Stroke(11 * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(pipe, Teal, style = Stroke(7 * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(pipe, Color.White.copy(alpha = 0.35f),
+            style = Stroke(2 * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        listOf(0 to Gold, 2 to Coral).forEach { (index, color) ->
+            drawCircle(DarkTeal, 9 * unit, center(index))
+            drawCircle(color, 6 * unit, center(index))
+            drawCircle(Color.White.copy(alpha = 0.8f), 2 * unit,
+                center(index) - Offset(1.5f * unit, 1.5f * unit))
+        }
+    }
+}
+
+@Composable
+fun NonogramArtwork(size: Dp) {
+    val picture = listOf("00100", "01110", "11111", "01110", "00100")
+    Canvas(Modifier.size(size).clearAndSetSemantics { }) {
+        val cell = this.size.minDimension / 5
+        picture.forEachIndexed { row, line ->
+            line.forEachIndexed { column, value ->
+                drawRect(if (value == '1') Teal else Cream,
+                    Offset(column * cell + 1.dp.toPx(), row * cell + 1.dp.toPx()),
+                    Size(cell - 2.dp.toPx(), cell - 2.dp.toPx()))
+            }
+        }
+    }
+}
 
 @Composable
 fun SudokuArtwork(dimension: Dp, modifier: Modifier = Modifier) {
@@ -125,64 +175,13 @@ fun TileMergeArtwork(dimension: Dp, modifier: Modifier = Modifier) {
                                 "$value",
                                 color = DarkTeal,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = if (dimension < 70.dp) 15.sp else 21.sp,
-                                lineHeight = if (dimension < 70.dp) 15.sp else 21.sp,
+                                fontSize = (dimension.value * .25f).sp,
+                                lineHeight = (dimension.value * .25f).sp,
                             )
                         }
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun NonogramArtwork(size: Dp) {
-    val picture = listOf("00100", "01110", "11111", "01110", "00100")
-    Canvas(Modifier.size(size).clearAndSetSemantics { }) {
-        val cell = this.size.minDimension / 5
-        picture.forEachIndexed { row, line ->
-            line.forEachIndexed { column, value ->
-                drawRect(if (value == '1') Teal else Cream,
-                    Offset(column * cell + 1.dp.toPx(), row * cell + 1.dp.toPx()),
-                    Size(cell - 2.dp.toPx(), cell - 2.dp.toPx()))
-            }
-        }
-    }
-}
-
-
-@Composable
-fun PipeArtwork(dimension: Dp) {
-    Canvas(Modifier.size(dimension).clearAndSetSemantics { }) {
-        val unit = size.minDimension / 100f
-        val board = Size(96 * unit, 94 * unit)
-        drawRoundRect(DarkTeal.copy(alpha = 0.14f), Offset(2 * unit, 6 * unit),
-            board, CornerRadius(13 * unit))
-        drawRoundRect(DarkTeal, Offset(2 * unit, 2 * unit), board, CornerRadius(13 * unit))
-        repeat(3) { row ->
-            repeat(3) { column ->
-                drawRoundRect(Color(0xFFEAF4EF),
-                    Offset((8 + column * 29) * unit, (8 + row * 29) * unit),
-                    Size(26 * unit, 26 * unit), CornerRadius(5 * unit))
-            }
-        }
-        fun center(index: Int) = Offset((21 + index % 3 * 29) * unit,
-            (21 + index / 3 * 29) * unit)
-        val route = listOf(0, 1, 4, 3, 6, 7, 8, 5, 2)
-        val pipe = Path().apply {
-            moveTo(center(0).x, center(0).y)
-            route.drop(1).forEach { lineTo(center(it).x, center(it).y) }
-        }
-        drawPath(pipe, DarkTeal, style = Stroke(11 * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawPath(pipe, Teal, style = Stroke(7 * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawPath(pipe, Color.White.copy(alpha = 0.35f),
-            style = Stroke(2 * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        listOf(0 to Gold, 2 to Coral).forEach { (index, color) ->
-            drawCircle(DarkTeal, 9 * unit, center(index))
-            drawCircle(color, 6 * unit, center(index))
-            drawCircle(Color.White.copy(alpha = 0.8f), 2 * unit,
-                center(index) - Offset(1.5f * unit, 1.5f * unit))
         }
     }
 }

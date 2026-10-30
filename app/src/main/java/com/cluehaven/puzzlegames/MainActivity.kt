@@ -1,6 +1,21 @@
 package com.cluehaven.puzzlegames
 
 import android.os.Bundle
+import androidx.activity.SystemBarStyle
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalContext
+import com.cluehaven.puzzlegames.ui.*
+import com.cluehaven.puzzlegames.data.ThemeMode
+import com.cluehaven.puzzlegames.data.CluehavenDatabase
+import com.cluehaven.puzzlegames.ui.home.resumeEntry
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
@@ -54,15 +69,15 @@ import com.cluehaven.puzzlegames.ui.theme.Mint
 import com.cluehaven.puzzlegames.ui.theme.Teal
 import com.cluehaven.puzzlegames.game.tilemerge.TileMergeScreen
 import com.cluehaven.puzzlegames.game.sudoku.SudokuScreen
+import com.cluehaven.puzzlegames.game.nonogram.NonogramScreen
+import com.cluehaven.puzzlegames.game.pipes.PipeScreen
+import com.cluehaven.puzzlegames.ui.home.NonogramArtwork
+import com.cluehaven.puzzlegames.ui.home.PipeArtwork
 import com.cluehaven.puzzlegames.data.AppSettings
 import com.cluehaven.puzzlegames.data.SettingsRepository
 import com.cluehaven.puzzlegames.ui.home.SudokuArtwork
 import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
 import com.cluehaven.puzzlegames.ui.progress.ProgressScreen
-import com.cluehaven.puzzlegames.game.pipes.PipeScreen
-import com.cluehaven.puzzlegames.game.nonogram.NonogramScreen
-import com.cluehaven.puzzlegames.ui.home.PipeArtwork
-import com.cluehaven.puzzlegames.ui.home.NonogramArtwork
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -73,9 +88,28 @@ class MainActivity : ComponentActivity() {
             val settingsRepository = remember { SettingsRepository(applicationContext) }
             val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
             val scope = rememberCoroutineScope()
-            CluehavenTheme(darkTheme = settings.darkTheme) {
-                CluehavenApp(settings.darkTheme) { enabled ->
-                    scope.launch { settingsRepository.setDarkTheme(enabled) }
+            val dark = when (settings.themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+            }
+            SideEffect {
+                val style = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+            }
+            val feedbackView = LocalView.current
+            val hapticFeedback = LocalHapticFeedback.current
+            CompositionLocalProvider(LocalReducedMotion provides settings.reducedMotion,
+                LocalGameFeedback provides {
+                    if (settings.soundEffects) feedbackView.playSoundEffect(android.view.SoundEffectConstants.CLICK)
+                    if (settings.haptics) hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                }) {
+                CluehavenTheme(darkTheme = dark) {
+                    CluehavenApp(settings,
+                        { mode -> scope.launch { settingsRepository.setThemeMode(mode) } },
+                        { enabled -> scope.launch { settingsRepository.setReducedMotion(enabled) } },
+                        { sound, haptics -> scope.launch { settingsRepository.setFeedback(sound, haptics) } })
                 }
             }
         }
@@ -97,9 +131,9 @@ private val games = listOf(
 )
 
 @Composable
-private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
+private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, setMotion: (Boolean) -> Unit, setFeedback: (Boolean, Boolean) -> Unit) {
     var route by rememberSaveable { mutableStateOf("home") }
-    val visibleRoute = route.takeIf {
+    val visibleRoute = route.substringBefore('|').takeIf {
         it == "home" || it == "progress" || it == "settings" || it == "sudoku_daily" ||
             games.any { game -> game.id == it }
     } ?: "home"
@@ -113,27 +147,23 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
         bottomBar = {
             if (visibleRoute != "sudoku" && visibleRoute != "sudoku_daily" &&
                 visibleRoute != "tile_merge" && visibleRoute != "nonogram" && visibleRoute != "pipes") {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.background,
+                    modifier = Modifier.navigationBarsPadding().height(64.dp),
+                    windowInsets = WindowInsets(0, 0, 0, 0)) {
                     listOf("home" to "Home", "progress" to "Progress", "settings" to "Settings")
                         .forEach { (id, label) ->
                             NavigationBarItem(
                                 selected = visibleRoute == id,
                                 onClick = { route = id },
                                 icon = {
-                                    Text(
-                                        when (id) {
-                                            "home" -> "⌂"
-                                            "progress" -> "▥"
-                                            else -> "⚙"
-                                        },
-                                        fontSize = 22.sp,
-                                    )
+                                    NavigationSymbol(id, if (visibleRoute == id)
+                                        MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                                 },
                                 label = { Text(label) },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Teal,
-                                    selectedTextColor = Teal,
-                                    indicatorColor = Mint,
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = Color.Transparent,
                                 ),
                             )
                         }
@@ -143,6 +173,7 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
     ) { padding ->
         when {
             visibleRoute == "sudoku" -> SudokuScreen(
+                resumeFreeOnStart = route.endsWith("|free"),
                 padding = padding,
                 goBack = { route = "home" },
             )
@@ -152,79 +183,122 @@ private fun CluehavenApp(darkTheme: Boolean, setDarkTheme: (Boolean) -> Unit) {
                 openDailyOnStart = true,
             )
             visibleRoute == "tile_merge" -> TileMergeScreen(padding) { route = "home" }
-            visibleRoute == "nonogram" -> NonogramScreen(padding) { route = "home" }
-            visibleRoute == "pipes" -> PipeScreen(padding) { route = "home" }
+            visibleRoute == "nonogram" -> NonogramScreen(padding, initialId = route.substringAfter('|', "").ifEmpty { null }) { route = "home" }
+            visibleRoute == "pipes" -> PipeScreen(padding, initialSize = route.substringAfter('|', "0").toIntOrNull() ?: 0) { route = "home" }
             visibleRoute == "progress" -> ProgressScreen(padding)
-            visibleRoute == "settings" -> SettingsScreen(padding, darkTheme, setDarkTheme)
+            visibleRoute == "settings" -> SettingsScreen(padding, settings, setTheme, setMotion, setFeedback)
             else -> HomeScreen(padding) { route = it }
         }
     }
 }
 
 @Composable
-private fun SettingsScreen(
-    padding: PaddingValues,
-    darkTheme: Boolean,
-    setDarkTheme: (Boolean) -> Unit,
-) {
-    Column(
-        Modifier.fillMaxSize().padding(padding).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold)
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-            Row(
-                Modifier.fillMaxWidth().clickable { setDarkTheme(!darkTheme) }.padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Dark theme", style = MaterialTheme.typography.titleMedium)
-                Switch(checked = darkTheme, onCheckedChange = setDarkTheme)
+private fun SettingsScreen(padding: PaddingValues, settings: AppSettings,
+    setTheme: (ThemeMode) -> Unit, setMotion: (Boolean) -> Unit, setFeedback: (Boolean, Boolean) -> Unit) {
+    Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) { Text("Settings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+        Card {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Appearance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ThemeMode.entries.forEach { mode ->
+                        val selected = settings.themeMode == mode
+                        Surface(onClick = { setTheme(mode) }, modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface) {
+                            Column(Modifier.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(when (mode) { ThemeMode.SYSTEM -> "⚙"; ThemeMode.LIGHT -> "☼"; ThemeMode.DARK -> "☾" }, fontSize = 22.sp)
+                                Text(mode.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                }
+                Text("Follow your device or choose a theme.", style = MaterialTheme.typography.bodySmall)
             }
         }
-        Text(
-            "Your settings and puzzle progress are saved on this device.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Card {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+                Text("Preferences", Modifier.padding(top = 10.dp, bottom = 8.dp), fontWeight = FontWeight.Bold)
+                PreferenceRow("Sound effects", settings.soundEffects) { setFeedback(it, settings.haptics) }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                PreferenceRow("Haptics", settings.haptics) { setFeedback(settings.soundEffects, it) }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                PreferenceRow("Reduced motion", settings.reducedMotion, setMotion)
+                Text("Minimize animations across the app.", Modifier.padding(bottom = 12.dp),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Card {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("About Cluehaven", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Version 1.0 · Four little puzzles, always offline")
+                HorizontalDivider()
+                Text("Settings and puzzle progress are saved on this device.", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreferenceRow(label: String, checked: Boolean, changed: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        Switch(checked = checked, onCheckedChange = changed)
     }
 }
 
 @Composable
 private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
+    val context = LocalContext.current
+    val database = remember(context) { CluehavenDatabase.get(context) }
+    val sessionFlow = remember(database) { database.puzzleSessions().observeSessions() }
+    val sessions by sessionFlow.collectAsState(initial = emptyList())
+    val resume = sessions.firstNotNullOfOrNull { resumeEntry(it) }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             BrandMark()
             Spacer(Modifier.width(12.dp))
-            Text("Cluehaven", style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold)
-        }
-        Text("Your next little puzzle awaits", color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Teal),
-            shape = RoundedCornerShape(20.dp),
-        ) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Today's puzzle", color = Color.White,
-                    style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("A fresh Sudoku challenge, at your pace", color = Color(0xFFD8E8E3),
-                    style = MaterialTheme.typography.bodySmall)
-                DailyCard("Sudoku", "Daily grid", Modifier.fillMaxWidth()) {
-                    openGame("sudoku_daily")
-                }
+            Column {
+                Text("Cluehaven", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("Your next little puzzle awaits", style = MaterialTheme.typography.bodySmall)
             }
         }
 
-        Text("Choose a game", style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            shape = RoundedCornerShape(20.dp),
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(if (resume == null) "Today's puzzle" else "Continue playing", color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(resume?.title ?: "A fresh Sudoku challenge, at your pace", color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.bodySmall)
+                Text("At your pace", style = MaterialTheme.typography.labelSmall)
+                }
+                when (resume?.route?.substringBefore('|')) {
+                    "pipes" -> PipeArtwork(64.dp)
+                    "nonogram" -> NonogramArtwork(64.dp)
+                    "tile_merge" -> TileMergeArtwork(64.dp)
+                    else -> SudokuArtwork(64.dp)
+                }
+                }
+                PuzzleAction(if (resume == null) "Play today's puzzle" else "Continue", "new",
+                    Modifier.fillMaxWidth(), primary = true) { openGame(resume?.route ?: "sudoku_daily") }
+            }
+        }
+
         games.chunked(2).forEach { rowGames ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowGames.forEach { game ->
@@ -238,18 +312,20 @@ private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
 
 @Composable
 private fun BrandMark() {
-    Column(
-        modifier = Modifier.size(36.dp).background(Teal, RoundedCornerShape(10.dp)).padding(7.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            Box(Modifier.size(10.dp).background(Gold, RoundedCornerShape(2.dp)))
-            Box(Modifier.size(10.dp).background(Mint, RoundedCornerShape(2.dp)))
+    androidx.compose.foundation.Canvas(Modifier.size(52.dp)) {
+        val u = size.width / 52
+        drawCircle(Gold, 7 * u, androidx.compose.ui.geometry.Offset(38 * u, 9 * u))
+        val house = androidx.compose.ui.graphics.Path().apply {
+            moveTo(5*u, 29*u); lineTo(21*u, 13*u); lineTo(37*u, 29*u)
+            lineTo(37*u, 49*u); lineTo(5*u, 49*u); close()
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            Box(Modifier.size(10.dp).background(Coral, RoundedCornerShape(2.dp)))
-            Box(Modifier.size(10.dp).background(Cream, RoundedCornerShape(2.dp)))
-        }
+        drawPath(house, Teal)
+        drawRoundRect(Color(0xFFF8F5EE), androidx.compose.ui.geometry.Offset(17*u, 36*u),
+            androidx.compose.ui.geometry.Size(9*u,13*u), androidx.compose.ui.geometry.CornerRadius(3*u))
+        drawLine(Teal, androidx.compose.ui.geometry.Offset(41*u, 47*u),
+            androidx.compose.ui.geometry.Offset(41*u, 26*u), 2*u)
+        drawOval(Mint, androidx.compose.ui.geometry.Offset(31*u, 25*u), androidx.compose.ui.geometry.Size(10*u, 6*u))
+        drawOval(Teal, androidx.compose.ui.geometry.Offset(41*u, 31*u), androidx.compose.ui.geometry.Size(10*u, 6*u))
     }
 }
 
@@ -280,24 +356,25 @@ private fun DailyCard(title: String, subtitle: String, modifier: Modifier, onCli
 private fun GameCard(game: Game, modifier: Modifier, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(186.dp),
+        modifier = modifier.height(142.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(.5.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
             Modifier.fillMaxSize().padding(12.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Box(
-                Modifier.fillMaxWidth().height(112.dp)
-                    .background(game.accent.copy(alpha = 0.22f), RoundedCornerShape(14.dp)),
+                Modifier.fillMaxWidth().height(78.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 when (game.id) {
-                    "sudoku" -> SudokuArtwork(96.dp)
-                    "tile_merge" -> TileMergeArtwork(96.dp)
-                    "nonogram" -> NonogramArtwork(96.dp)
-                    "pipes" -> PipeArtwork(96.dp)
+                    "sudoku" -> SudokuArtwork(64.dp)
+                    "tile_merge" -> TileMergeArtwork(64.dp)
+                    "nonogram" -> NonogramArtwork(64.dp)
+                    "pipes" -> PipeArtwork(64.dp)
                 }
             }
             Column {
