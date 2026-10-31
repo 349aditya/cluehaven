@@ -30,10 +30,16 @@ import com.cluehaven.puzzlegames.data.playRecord
 
 @Composable
 fun NonogramScreen(padding: PaddingValues, initialId: String? = null, goBack: () -> Unit) {
+    var selectedId by rememberSaveable { mutableStateOf(initialId?.takeUnless { it.startsWith("endless-") }) }
+    var endlessResume by rememberSaveable { mutableStateOf(initialId?.takeIf { it.startsWith("endless-") }) }
+    var showEndless by rememberSaveable { mutableStateOf(endlessResume != null) }
+    if (showEndless) {
+        EndlessNonogramScreen(padding, endlessResume) { showEndless = false; endlessResume = null }
+        return
+    }
     val feedback = com.cluehaven.puzzlegames.ui.LocalGameFeedback.current
     val context = LocalContext.current
     val storage = remember(context) { NonogramStorage.get(context) }
-    var selectedId by rememberSaveable { mutableStateOf<String?>(initialId) }
     var state by remember { mutableStateOf<NonogramState?>(null) }
     var saved by remember { mutableStateOf<Map<String, NonogramState>>(emptyMap()) }
     var filterSize by rememberSaveable { mutableStateOf(5) }
@@ -93,6 +99,18 @@ fun NonogramScreen(padding: PaddingValues, initialId: String? = null, goBack: ()
                     Text("$today · " + if (saved[daily.id]?.isComplete == true) "Solved ✓" else "Ready when you are")
                 }
             }
+            Card(onClick = { showEndless = true }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    com.cluehaven.puzzlegames.ui.home.NonogramArtwork(44.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text("Endless", fontWeight = FontWeight.Bold)
+                        Text("Fresh pictures, solved with logic", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("›", color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Text("Picture pack", Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf(5, 10).forEach { size ->
                     FilterChip(selected = filterSize == size, onClick = { filterSize = size },
@@ -142,7 +160,8 @@ fun NonogramScreen(padding: PaddingValues, initialId: String? = null, goBack: ()
 
 @Composable
 internal fun NonogramPlay(state: NonogramState, padding: PaddingValues, cross: Boolean, selected: Int,
-    back: () -> Unit, selectMode: (Boolean) -> Unit, mark: (Int) -> Unit, update: (NonogramState) -> Unit) {
+    back: () -> Unit, selectMode: (Boolean) -> Unit, mark: (Int) -> Unit, update: (NonogramState) -> Unit,
+    nextPuzzle: (() -> Unit)? = null, preparingNext: Boolean = false) {
     PuzzlePage(padding, "Nonogram", back, footer = {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             PuzzleAction("Undo", "undo", Modifier.weight(1f),
@@ -153,11 +172,17 @@ internal fun NonogramPlay(state: NonogramState, padding: PaddingValues, cross: B
     }) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             StatusPill("${state.puzzle.size}×${state.puzzle.size} · " +
-                if (state.puzzle.id.startsWith("daily-")) "Daily" else "Picture ${state.puzzle.number} · ${state.puzzle.difficulty.label}")
+                when {
+                    state.puzzle.endless != null -> "Endless · ${state.puzzle.difficulty.label}"
+                    state.puzzle.id.startsWith("daily-") -> "Daily"
+                    else -> "Picture ${state.puzzle.number} · ${state.puzzle.difficulty.label}"
+                })
         }
         PlayTimerLine(state.playRecord(), state.cells.any { it != 0 } || state.hintsUsed > 0, state.isComplete)
         NonogramBoard(state, selected, mark)
-        if (state.isComplete) CompletionCard("${state.puzzle.title} complete!", "Your progress is saved.", "Choose another", back)
+        if (state.isComplete) CompletionCard("${state.puzzle.title} complete!",
+            if (preparingNext) "Preparing your next picture…" else "Your progress is saved.",
+            if (nextPuzzle != null) "Next puzzle" else "Choose another", nextPuzzle ?: back)
         else {
             Row(Modifier.widthIn(max = 520.dp).fillMaxWidth().align(Alignment.CenterHorizontally)
                 .padding(horizontal = 36.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {

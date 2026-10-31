@@ -64,6 +64,18 @@ fun ProgressScreen(padding: PaddingValues) {
                 history.count { it.game == "Pipe Connect" }.toString(), "networks solved",
                 "${pipes.count { it.isComplete }} completed boards saved")
         }
+        val endless = remember(history) { endlessNonogramStats(history) }
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                NonogramArtwork(44.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Endless Nonogram", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                    Text("${endless.solved} pictures solved", color = MaterialTheme.colorScheme.primary)
+                    Text("5×5: ${endless.smallSolved} · 10×10: ${endless.largeSolved}", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.cluehaven.puzzlegames.data.PlayRecordRepository
 import com.cluehaven.puzzlegames.data.formatPlayTime
 import com.cluehaven.puzzlegames.data.isScoreGame
+import com.cluehaven.puzzlegames.data.isEndlessNonogram
 import com.cluehaven.puzzlegames.ui.GameHeader
 import java.time.Instant
 import java.time.ZoneId
@@ -27,7 +28,7 @@ fun CompletionHistoryScreen(padding: PaddingValues, back: () -> Unit) {
     val history by records.history.collectAsState(initial = emptyList())
     var game by rememberSaveable { mutableStateOf("All") }
     var limit by rememberSaveable(game) { mutableIntStateOf(10) }
-    val filtered = history.filter { game == "All" || it.game == game }
+    val filtered = history.filter { game == "All" || if (game == "Endless") isEndlessNonogram(it) else it.game == game }
     val dateFormat = remember { DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale.getDefault()) }
 
     Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
@@ -36,7 +37,7 @@ fun CompletionHistoryScreen(padding: PaddingValues, back: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("All", "Sudoku", "Tile Merge", "Nonogram", "Pipe Connect", "Block Garden", "Daily Five").forEach { name ->
+                listOf("All", "Sudoku", "Tile Merge", "Nonogram", "Endless", "Pipe Connect", "Block Garden", "Daily Five").forEach { name ->
                     FilterChip(selected = name == game, onClick = { game = name }, label = { Text(name) })
                 }
             }
