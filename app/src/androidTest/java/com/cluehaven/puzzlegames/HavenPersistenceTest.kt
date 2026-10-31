@@ -21,7 +21,11 @@ class HavenPersistenceTest {
         val db = Room.inMemoryDatabaseBuilder(context, CluehavenDatabase::class.java).build()
         try {
             val repo = DailyHavenRepository(db)
-            repeat(3) { assertEquals(0, HavenProgress.from(date, repo.observeEntries(date).first()).doneCount) }
+            repeat(3) {
+                val saved = repo.observeHaven(date).first()
+                assertEquals(0, HavenProgress.from(date, saved.entries, saved.dailyResults).doneCount)
+                assertTrue(saved.dailyResults.isEmpty())
+            }
             assertNull(db.dailyHaven().day(date.toString()))
             assertEquals(0, db.dailyHaven().completedCount(date.toString()))
         } finally { db.close() }
@@ -45,7 +49,10 @@ class HavenPersistenceTest {
             wins.take(3).forEach { assertTrue(repo.save(date, it).newCompletion) }
             val partial = db.dailyHaven().entries(date.toString())
             repeat(3) {
-                assertEquals(3, HavenProgress.from(date, DailyHavenRepository(db).observeEntries(date).first()).doneCount)
+                val saved = DailyHavenRepository(db).observeHaven(date).first()
+                val progress = HavenProgress.from(date, saved.entries, saved.dailyResults)
+                assertEquals(3, progress.doneCount)
+                assertEquals(0, progress.streak.currentCount)
                 assertEquals(partial, db.dailyHaven().entries(date.toString()))
                 assertNull(db.dailyHaven().day(date.toString())!!.bonusAwardedAt)
             }
@@ -54,7 +61,10 @@ class HavenPersistenceTest {
             val completedRows = db.dailyHaven().entries(date.toString())
             val completedDay = db.dailyHaven().day(date.toString())
             repeat(3) {
-                assertEquals(5, HavenProgress.from(date, repo.observeEntries(date).first()).doneCount)
+                val saved = repo.observeHaven(date).first()
+                val progress = HavenProgress.from(date, saved.entries, saved.dailyResults)
+                assertEquals(5, progress.doneCount)
+                assertEquals(1, progress.streak.currentCount)
                 assertEquals(completedRows, db.dailyHaven().entries(date.toString()))
                 assertEquals(completedDay, db.dailyHaven().day(date.toString()))
             }

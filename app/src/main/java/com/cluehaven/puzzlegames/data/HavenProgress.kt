@@ -7,7 +7,8 @@ val havenGameOrder = listOf(DailyGame.SUDOKU, DailyGame.NONOGRAM, DailyGame.PIPE
     DailyGame.TILE_MERGE, DailyGame.BLOCKS)
 
 /** Read-only projection. Showing a garden never runs a completion or bonus transaction. */
-data class HavenProgress(val date: LocalDate, val completed: Set<DailyGame> = emptySet(), val loaded: Boolean = true) {
+data class HavenProgress(val date: LocalDate, val completed: Set<DailyGame> = emptySet(), val loaded: Boolean = true,
+    val streak: HavenStreak = calculateHavenStreak(emptyList(), date)) {
     val doneCount: Int get() = completed.size
     val countLabel: String get() = if (loaded) "$doneCount of 5 done" else "Loading today's progress…"
     val grownLabel: String get() = if (loaded) "$doneCount of 5 grown today" else "Loading your Haven…"
@@ -28,8 +29,9 @@ data class HavenProgress(val date: LocalDate, val completed: Set<DailyGame> = em
     }
 
     companion object {
-        fun from(date: LocalDate, entries: List<DailyHavenEntry>): HavenProgress = HavenProgress(date,
+        fun from(date: LocalDate, entries: List<DailyHavenEntry>, results: List<HavenDailyResult> = emptyList()): HavenProgress = HavenProgress(date,
             entries.asSequence().filter { it.date == date.toString() && it.completedAt != null }
-                .mapNotNull { row -> DailyGame.entries.firstOrNull { it.key == row.gameId } }.toSet())
+                .mapNotNull { row -> DailyGame.entries.firstOrNull { it.key == row.gameId } }.toSet(),
+            streak = calculateHavenStreak(results, date))
     }
 }

@@ -6,6 +6,8 @@ import com.cluehaven.puzzlegames.game.daily.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.LocalDate
 
 @Entity(tableName = "daily_haven_days")
@@ -28,8 +30,16 @@ data class DailyHavenEntry(
 
 data class DailySaveResult(val entry: DailyHavenEntry, val newCompletion: Boolean, val newBonus: Boolean)
 
+data class HavenDailyResultRow(val date: String, val completedGames: Int, val requiredGamesForStreak: Int)
+data class SavedHavenResults(val entries: List<DailyHavenEntry>, val dailyResults: List<HavenDailyResult>)
+
 @Dao
 interface DailyHavenDao {
+    @Query("""SELECT d.date, d.requiredGamesForStreak, COUNT(e.gameId) AS completedGames
+        FROM daily_haven_days d LEFT JOIN daily_haven_entries e
+        ON e.date = d.date AND e.completedAt IS NOT NULL AND e.gameId IN (:knownGames)
+        GROUP BY d.date, d.requiredGamesForStreak ORDER BY d.date""")
+    suspend fun streakResults(knownGames: List<String>): List<HavenDailyResultRow>
     @Query("SELECT * FROM daily_haven_entries WHERE date = :date")
     fun observeEntries(date: String): Flow<List<DailyHavenEntry>>
     @Query("SELECT * FROM daily_haven_days WHERE date = :date")
@@ -57,6 +67,15 @@ class DailyHavenRepository internal constructor(private val database: CluehavenD
     private val dao = database.dailyHaven()
     fun observeEntries(date: LocalDate) = dao.observeEntries(date.toString())
     fun observeDay(date: LocalDate) = dao.observeDay(date.toString())
+    /** One read transaction keeps the garden and streak consistent with the same completion. */
+    fun observeHaven(date: LocalDate): Flow<SavedHavenResults> = database.invalidationTracker
+        .createFlow("daily_haven_days", "daily_haven_entries")
+        .map {
+            database.withTransaction {
+                SavedHavenResults(dao.entries(date.toString()), dao.streakResults(DailyGame.entries.map { it.key })
+                    .map { row -> HavenDailyResult(LocalDate.parse(row.date), row.completedGames, row.requiredGamesForStreak) })
+            }
+        }.distinctUntilChanged()
     private data class Write(val date: String, val game: DailyGame, val state: DailyState?, val result: CompletableDeferred<DailySaveResult>)
     private val writes = Channel<Write>(Channel.UNLIMITED)
     init {
