@@ -80,6 +80,7 @@ import com.cluehaven.puzzlegames.data.SettingsRepository
 import com.cluehaven.puzzlegames.ui.home.SudokuArtwork
 import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
 import com.cluehaven.puzzlegames.ui.progress.ProgressScreen
+import com.cluehaven.puzzlegames.ui.settings.CompletionHistoryScreen
 import kotlinx.coroutines.launch
 import com.cluehaven.puzzlegames.ui.daily.*
 
@@ -143,13 +144,14 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
     var route by rememberSaveable { mutableStateOf(initialRoute) }
     var dailyReturnRoute by rememberSaveable { mutableStateOf("home") }
     val visibleRoute = route.substringBefore('|').takeIf {
-        it == "home" || it == "haven" || it == "progress" || it == "settings" || it == "sudoku_daily" || it == "daily_five" ||
+        it == "home" || it == "haven" || it == "progress" || it == "settings" || it == "completion_history" || it == "sudoku_daily" || it == "daily_five" ||
             games.any { game -> game.id == it }
     } ?: "home"
 
-    BackHandler(enabled = visibleRoute == "haven" || visibleRoute == "progress" || visibleRoute == "settings") {
-        route = "home"
+    BackHandler(enabled = visibleRoute == "haven" || visibleRoute == "progress" || visibleRoute == "settings" || visibleRoute == "completion_history") {
+        route = if (visibleRoute == "completion_history") "settings" else "home"
     }
+    val selectedTab = if (visibleRoute == "completion_history") "settings" else visibleRoute
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -162,10 +164,10 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
                     listOf("home" to "Home", "haven" to "Haven", "progress" to "Progress", "settings" to "Settings")
                         .forEach { (id, label) ->
                             NavigationBarItem(
-                                selected = visibleRoute == id,
+                                selected = selectedTab == id,
                                 onClick = { route = id },
                                 icon = {
-                                    NavigationSymbol(id, if (visibleRoute == id)
+                                    NavigationSymbol(id, if (selectedTab == id)
                                         MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                                 },
                                 label = { Text(label) },
@@ -202,7 +204,9 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
             visibleRoute == "pipes" -> PipeScreen(padding, initialSize = route.substringAfter('|', "0").toIntOrNull() ?: 0) { route = "home" }
             visibleRoute == "blocks" -> BlockScreen(padding) { route = "home" }
             visibleRoute == "progress" -> ProgressScreen(padding)
-            visibleRoute == "settings" -> SettingsScreen(padding, settings, setTheme, setMotion, setFeedback)
+            visibleRoute == "settings" -> SettingsScreen(padding, settings, setTheme, setMotion, setFeedback,
+                openHistory = { route = "completion_history" })
+            visibleRoute == "completion_history" -> CompletionHistoryScreen(padding) { route = "settings" }
             else -> HomeScreen(padding) {
                 if (it.substringBefore('|') == "daily_five") dailyReturnRoute = "home"
                 route = it
@@ -213,7 +217,8 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
 
 @Composable
 private fun SettingsScreen(padding: PaddingValues, settings: AppSettings,
-    setTheme: (ThemeMode) -> Unit, setMotion: (Boolean) -> Unit, setFeedback: (Boolean, Boolean) -> Unit) {
+    setTheme: (ThemeMode) -> Unit, setMotion: (Boolean) -> Unit, setFeedback: (Boolean, Boolean) -> Unit,
+    openHistory: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) { Text("Settings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
@@ -248,6 +253,17 @@ private fun SettingsScreen(padding: PaddingValues, settings: AppSettings,
                 PreferenceRow("Reduced motion", settings.reducedMotion, setMotion)
                 Text("Minimize animations across the app.", Modifier.padding(bottom = 12.dp),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Card(onClick = openHistory, modifier = Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Completion history", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("Your completed puzzles and finished runs", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text("›", color = MaterialTheme.colorScheme.primary, fontSize = 24.sp)
             }
         }
         Card {

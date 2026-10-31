@@ -1,11 +1,8 @@
 package com.cluehaven.puzzlegames.ui.progress
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,12 +19,6 @@ import com.cluehaven.puzzlegames.game.nonogram.*
 import com.cluehaven.puzzlegames.game.pipes.*
 import com.cluehaven.puzzlegames.game.blocks.*
 import com.cluehaven.puzzlegames.ui.home.*
-import java.time.LocalDate
-import java.time.format.TextStyle
-import java.util.Locale
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun ProgressScreen(padding: PaddingValues) {
@@ -60,28 +51,6 @@ fun ProgressScreen(padding: PaddingValues) {
         Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
             Text("Progress", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Daily Sudoku streak · ${sudoku.dailyStreak} days", fontWeight = FontWeight.Bold)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    (6 downTo 0).forEach { ago ->
-                        val day = today.minusDays(ago.toLong())
-                        val solved = completions.any { it.mode == "DAILY" && it.puzzleId == "daily-$day" }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Surface(shape = CircleShape, color = if (solved) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surface, modifier = Modifier.size(30.dp)) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(if (solved) "✓" else "·", color = if (solved) MaterialTheme.colorScheme.onPrimary
-                                        else MaterialTheme.colorScheme.onSurface)
-                                }
-                            }
-                            Text(day.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
-                                style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                }
-            }
-        }
         Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ProgressCard("Sudoku", Modifier.weight(1f), { SudokuBadge(38.dp) },
                 sudoku.total.toString(), "puzzles solved", "Daily: ${sudoku.dailySolved} · Hints: ${sudoku.solvedWithHints}\n${sudokuBoardStatus(activeSudoku)}")
@@ -113,8 +82,7 @@ fun ProgressScreen(padding: PaddingValues) {
             }
         }
         PersonalBestSection(history)
-        CompletionHistory(history)
-        Text("Saved on this device. Older results without a full timer are excluded from fastest times. Older board dates reflect their last save.",
+        Text("Saved on this device. Older results without a full timer are excluded from fastest times.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -135,40 +103,6 @@ private fun PersonalBestSection(history: List<PlayRecord>) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun CompletionHistory(history: List<PlayRecord>) {
-    var game by remember { mutableStateOf("All") }
-    var limit by remember(game) { mutableIntStateOf(10) }
-    val filtered = history.filter { game == "All" || it.game == game }
-    val dateFormat = remember { DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale.getDefault()) }
-    Text("Completion history", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("All", "Sudoku", "Tile Merge", "Nonogram", "Pipe Connect", "Block Garden", "Daily Five").forEach { name ->
-            FilterChip(selected = name == game, onClick = { game = name }, label = { Text(name) })
-        }
-    }
-    if (filtered.isEmpty()) Text("Your completed puzzles and finished runs will appear here.",
-        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    filtered.take(limit).forEach { record ->
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("${record.game} · ${record.category}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-                Text(record.title, style = MaterialTheme.typography.bodySmall)
-                Text(if (isScoreGame(record.game)) "Score ${record.score} · " +
-                    if (record.timeKnown) formatPlayTime(record.elapsedMillis) else "Time unavailable"
-                    else (if (record.timeKnown) formatPlayTime(record.elapsedMillis) else "Time unavailable") +
-                        if (record.hintsUsed > 0) " · Assisted (${record.hintsUsed} hint)" else " · No hints",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                Text(dateFormat.format(Instant.ofEpochMilli(record.completedAt!!).atZone(ZoneId.systemDefault())),
-                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-    if (filtered.size > limit) OutlinedButton(onClick = { limit += 10 }, modifier = Modifier.fillMaxWidth()) {
-        Text("Show more (${filtered.size - limit} remaining)")
     }
 }
 
