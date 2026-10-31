@@ -17,10 +17,12 @@ data class PipeState(
 }
 
 object PipeEngine {
+    val regularSizes: List<Int> = listOf(4, 6, 8)
+
     fun rotate(mask: Int): Int = ((mask shl 1) and 15) or (mask shr 3)
 
     fun newGame(size: Int, seed: Long = System.nanoTime()): PipeState {
-        require(size in 4..6)
+        require(size in regularSizes || size == 5)
         val random = Random(seed)
         val solution = MutableList(size * size) { 0 }
         val visited = mutableSetOf(0)

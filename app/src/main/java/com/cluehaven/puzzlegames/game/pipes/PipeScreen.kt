@@ -41,7 +41,7 @@ fun PipeScreen(padding: PaddingValues, initialSize: Int = 0, goBack: () -> Unit)
     val feedback = com.cluehaven.puzzlegames.ui.LocalGameFeedback.current
     val context = LocalContext.current
     val storage = remember(context) { PipeStorage.get(context) }
-    var boardSize by rememberSaveable { mutableStateOf(initialSize.takeIf { it in setOf(4, 6) } ?: 0) }
+    var boardSize by rememberSaveable { mutableStateOf(initialSize.takeIf { it in PipeEngine.regularSizes } ?: 0) }
     var state by remember { mutableStateOf<PipeState?>(null) }
     var restart by remember { mutableStateOf(false) }
     LaunchedEffect(boardSize) {
@@ -61,14 +61,18 @@ fun PipeScreen(padding: PaddingValues, initialSize: Int = 0, goBack: () -> Unit)
             GameHeader("Pipe Connect", goBack)
             Text("Bring the whole network to life.", style = MaterialTheme.typography.titleLarge)
             Text("Rotate each tile to connect the network. No open ends, no wrapping edges.")
-            listOf(4, 6).forEach { size ->
+            PipeEngine.regularSizes.forEach { size ->
                 Card(onClick = { boardSize = size }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                         com.cluehaven.puzzlegames.ui.home.PipeArtwork(56.dp)
                         Spacer(Modifier.width(16.dp))
                         Column {
                             Text("$size×$size network", fontWeight = FontWeight.Bold)
-                            Text(if (size == 4) "A little moment of focus" else "A bigger connection", style = MaterialTheme.typography.bodySmall)
+                            Text(when (size) {
+                                4 -> "A little moment of focus"
+                                6 -> "A bigger connection"
+                                else -> "A sprawling network to untangle"
+                            }, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -89,6 +93,7 @@ fun PipeScreen(padding: PaddingValues, initialSize: Int = 0, goBack: () -> Unit)
 internal fun PipePlay(current: PipeState, padding: PaddingValues, paused: Boolean,
     back: () -> Unit, update: (PipeState) -> Unit, newBoard: () -> Unit, newBoardLabel: String = "New") {
     val connected = remember(current.tiles) { PipeEngine.connected(current.size, current.tiles) }
+    val complete = remember(current.size, current.tiles) { current.isComplete }
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
         .padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Column(Modifier.widthIn(max = 520.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -102,7 +107,7 @@ internal fun PipePlay(current: PipeState, padding: PaddingValues, paused: Boolea
                     Text("${connected.size} / ${current.tiles.size} connected", style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold)
                     PlayTimerLine(current.playRecord(), current.moves > 0 || current.hintsUsed > 0 || current.history.isNotEmpty(),
-                        current.isComplete, paused = paused, modifier = Modifier.weight(1f), alignment = Arrangement.End)
+                        complete, paused = paused, modifier = Modifier.weight(1f), alignment = Arrangement.End)
                 }
                 val dark = MaterialTheme.colorScheme.background.luminance() < .5f
                 // A continuous bar matches the reference, without Material's stop dot and gap.
@@ -115,12 +120,12 @@ internal fun PipePlay(current: PipeState, padding: PaddingValues, paused: Boolea
                         size = Size(size.width * connected.size / current.tiles.size, size.height), cornerRadius = radius)
                 }
             }
-            if (current.isComplete) CompletionCard("Network complete!", "Every pipe is connected.", "New network", newBoard)
+            if (complete) CompletionCard("Network complete!", "Every pipe is connected.", "New network", newBoard)
             Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PuzzleAction("Undo", "undo", Modifier.weight(1f), enabled = current.history.isNotEmpty() && !current.isComplete) {
+                PuzzleAction("Undo", "undo", Modifier.weight(1f), enabled = current.history.isNotEmpty() && !complete) {
                     update(PipeEngine.undo(current))
                 }
-                PuzzleAction("Hint", "hint", Modifier.weight(1f), enabled = current.hintsUsed == 0 && !current.isComplete) {
+                PuzzleAction("Hint", "hint", Modifier.weight(1f), enabled = current.hintsUsed == 0 && !complete) {
                     update(PipeEngine.hint(current))
                 }
                 PuzzleAction(newBoardLabel, "undo", Modifier.weight(1f), primary = true, onClick = newBoard)
@@ -132,6 +137,7 @@ internal fun PipePlay(current: PipeState, padding: PaddingValues, paused: Boolea
 @Composable
 private fun PipeBoard(current: PipeState, update: (PipeState) -> Unit) {
     val connected = remember(current.tiles) { PipeEngine.connected(current.size, current.tiles) }
+    val complete = remember(current.size, current.tiles) { current.isComplete }
     val dark = MaterialTheme.colorScheme.background.luminance() < .5f
     val active = if (dark) Color(0xFF42BDB3) else Color(0xFF087D7B)
     val inactive = if (dark) Color(0xFF668080) else Color(0xFFA5AFAA)
@@ -164,7 +170,7 @@ private fun PipeBoard(current: PipeState, update: (PipeState) -> Unit) {
                             tween(if (LocalReducedMotion.current) 0 else 200), label = "Pipe connection")
                         val ports = listOf("north", "east", "south", "west").filterIndexed { d, _ -> mask and (1 shl d) != 0 }
                         Canvas(Modifier.weight(1f).fillMaxHeight()
-                            .clickable(enabled = !current.isComplete) { update(PipeEngine.turn(current, index)) }
+                            .clickable(enabled = !complete) { update(PipeEngine.turn(current, index)) }
                             .semantics { contentDescription = "Row ${row + 1}, column ${column + 1}, " +
                                 "ports ${ports.joinToString()}, " + (if (index in connected) "connected" else "disconnected") +
                                 when { index == 0 -> ", source"; Integer.bitCount(mask) == 1 -> ", endpoint"; else -> "" } }) {

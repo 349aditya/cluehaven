@@ -43,7 +43,7 @@ fun ProgressScreen(padding: PaddingValues) {
         storage.completedDailyPuzzles().forEach(progress::recordSudoku)
         tile = TileMergeStorage.get(context).load().also(progress::recordTile2048)
         val pipeStorage = PipeStorage.get(context)
-        pipes = listOf(4, 6).map { pipeStorage.load(it) }
+        pipes = PipeEngine.regularSizes.map { pipeStorage.load(it) }
         blocks = BlockStorage.get(context).saved()
     }
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),

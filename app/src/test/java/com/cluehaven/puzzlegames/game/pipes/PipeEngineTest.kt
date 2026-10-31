@@ -12,7 +12,7 @@ class PipeEngineTest {
         assertEquals(3, PipeEngine.rotate(9))
     }
     @Test fun generatedBoardsAreSolvableAndScrambled() {
-        for (size in listOf(4, 5, 6)) for (seed in 0L..99L) {
+        for (size in listOf(4, 5, 6, 8)) for (seed in 0L..99L) {
             val state = PipeEngine.newGame(size, seed)
             assertFalse(state.isComplete)
             assertTrue(state.copy(tiles = state.solution).isComplete)
@@ -37,12 +37,14 @@ class PipeEngineTest {
         assertFalse(PipeState(2, 0, separate, separate).isComplete)
     }
     @Test fun undoRestoresTilesAndMoveCount() {
-        val start = PipeEngine.newGame(4, 12)
-        val moved = PipeEngine.turn(start, 0)
-        assertEquals(1, moved.moves)
-        assertEquals(start.tiles, PipeEngine.undo(moved).tiles)
-        assertEquals(0, PipeEngine.undo(moved).moves)
-        assertEquals(start, PipeEngine.turn(start, -1))
+        for (size in PipeEngine.regularSizes) {
+            val start = PipeEngine.newGame(size, 12)
+            val moved = PipeEngine.turn(start, size * size - 1)
+            assertEquals(1, moved.moves)
+            assertEquals(start.tiles, PipeEngine.undo(moved).tiles)
+            assertEquals(0, PipeEngine.undo(moved).moves)
+            assertEquals(start, PipeEngine.turn(start, -1))
+        }
     }
     @Test fun hintIsLimitedAndCompletionLocksBoard() {
         val start = PipeEngine.newGame(6, 42)

@@ -14,7 +14,7 @@ Early development build with Sudoku, Tile Merge (2048-style), Nonogram, Pipe Con
 
 - Block Garden: an endless 8×8 block-placement puzzle with 31 fixed-orientation shapes, three-piece trays, drag/drop landing previews, tap-to-place controls, simultaneous row/column clears, consecutive-clear combo bonuses, and one undo per run (including game over and tray refills). Fresh trays have at least one legal placement sequence; larger shapes enter after the first nine placements. New runs retain the best score. The board, remaining tray, random state, and undo snapshot save automatically. A dedicated Home card, Continue support, active-play timer, score statistics, and dated finished-run history are included. Fastest-time records remain for finite puzzles.
 
-- Pipe Connect now follows the approved board design: broad curved pipes that meet across softly rounded tiles, teal connected paths, muted disconnected paths, a gold source, coral endpoints, a continuous progress bar, and actions grouped below the board. Its timer sits beside the connection count. Both board sizes support light/dark appearance and reduced motion; generation, rotation rules, hints, undo, and saves are unchanged.
+- Pipe Connect follows the approved board design: broad curved pipes that meet across softly rounded tiles, teal connected paths, muted disconnected paths, a gold source, coral endpoints, a continuous progress bar, and actions grouped below the board. Its timer sits beside the connection count. All three regular board sizes support light/dark appearance and reduced motion.
 
 - Block Garden keeps the dragged piece visible continuously above a separate snapped landing guide. Pointer updates redraw the drag/preview canvases instead of recomposing the screen, and tray fit checks are cached with an early-exit availability search. Blocked landings draw rounded cross markers; rejected drops fade out, and cleared tiles shrink/fade in a short sweep. Reduced Motion skips pickup/clear movement, and changing it does not replay old clears. See [motion fix review](docs/block-garden-motion.md).
 
@@ -28,7 +28,7 @@ Early development build with Sudoku, Tile Merge (2048-style), Nonogram, Pipe Con
 - Refreshed UI: warm ivory and teal themes, shared game headers, compact home cards, and a Continue card that opens the latest unfinished saved board. Appearance supports System, Light, and Dark with legacy preferences preserved; reduced motion disables connection and tile color transitions.
 - Sudoku highlights the selected box and matching digits, with a larger two-row number pad for 9×9 boards. Nonogram has size filters, saved-board previews, active row/column highlighting, and clue-match colors. Pipe Connect shows a gold source, coral endpoints, and connection progress. Progress displays real statistics for all five games, including a persistent count of completed Pipe Connect networks.
 
-- Pipe Connect: generated 4×4 and 6×6 networks, clockwise tile rotation, source-connected highlighting, undo, one free hint, and independent save/resume for each size. Connect every tile with no leaking ends; new puzzles replace the current board only after confirmation.
+- Pipe Connect: generated 4×4, 6×6, and 8×8 networks, clockwise tile rotation, source-connected highlighting, undo, one free hint, and independent save/resume for each size. The 8×8 board has 64 tiles and its own history/personal-best category. Connect every tile with no leaking ends; new puzzles replace the current board only after confirmation. Daily Five retains its configured 4×4/5×5/6×6 objectives.
 
 - Home screen with game navigation, a saved theme setting, and Progress statistics for Sudoku and Tile Merge.
 - Playable offline Sudoku: 6×6 Easy, 9×9 Medium and Hard, a daily 9×9 puzzle, notes, erase, undo, one free hint, and local save/resume.
@@ -69,6 +69,7 @@ any missing dependencies. The standard Windows wrapper is `gradlew.bat`.
 
 ## Verification so far
 
+- The 8×8 Pipe Connect addition passed 94 unit tests and 15 targeted device tests. Generation checks cover 100 seeds at each supported size; device checks cover 64 accessible tiles, rotation/undo/hints, light/dark and Reduced Motion, file-backed save/reopen without changing smaller boards, and Daily Five compatibility. Lint has zero errors.
 - Daily Haven steps 1–5: 90 unit tests and 24 device tests passed, including all difficulties, concurrent difficulty locking, persistent resume/retry, legacy migrations, atomic completion/bonus rollback, read-only garden/streak reconstruction, and Home/Haven controls in both themes with Reduced Motion. Streak tests cover weekly boundaries, gaps, first use, midnight, timezone changes, and saved requirement changes. Lint has zero errors and 18 existing warnings. See the step-5 review for main-app saved-data recovery and verification details.
 - `:app:assembleDebug` passed.
 - `:app:testDebugUnitTest` passed, including Sudoku uniqueness, difficulty, hint and undo tests, Tile Merge movement and undo tests, and Progress streak tests.
