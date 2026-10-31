@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.cluehaven.puzzlegames.data.*
 import com.cluehaven.puzzlegames.game.sudoku.SudokuStorage
+import com.cluehaven.puzzlegames.game.sudoku.SudokuState
 import com.cluehaven.puzzlegames.game.tilemerge.TileMergeStorage
 import com.cluehaven.puzzlegames.game.tilemerge.TileMergeState
 import com.cluehaven.puzzlegames.game.nonogram.*
@@ -43,9 +44,11 @@ fun ProgressScreen(padding: PaddingValues) {
     var tile by remember { mutableStateOf<TileMergeState?>(null) }
     var pipes by remember { mutableStateOf<List<PipeState>>(emptyList()) }
     var blocks by remember { mutableStateOf<BlockState?>(null) }
+    var activeSudoku by remember { mutableStateOf<SudokuState?>(null) }
     LaunchedEffect(Unit) {
         val storage = SudokuStorage.get(context)
-        storage.load(SudokuStorage.FREE_KEY)?.let(progress::recordSudoku)
+        activeSudoku = storage.load(SudokuStorage.FREE_KEY)
+        activeSudoku?.let(progress::recordSudoku)
         storage.completedDailyPuzzles().forEach(progress::recordSudoku)
         tile = TileMergeStorage.get(context).load().also(progress::recordTile2048)
         val pipeStorage = PipeStorage.get(context)
@@ -81,7 +84,7 @@ fun ProgressScreen(padding: PaddingValues) {
         }
         Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ProgressCard("Sudoku", Modifier.weight(1f), { SudokuBadge(38.dp) },
-                sudoku.total.toString(), "puzzles solved", "Daily: ${sudoku.dailySolved} · Hints: ${sudoku.solvedWithHints}")
+                sudoku.total.toString(), "puzzles solved", "Daily: ${sudoku.dailySolved} · Hints: ${sudoku.solvedWithHints}\n${sudokuBoardStatus(activeSudoku)}")
             ProgressCard("Tile Merge", Modifier.weight(1f), { TileMergeArtwork(38.dp) },
                 (tile?.bestScore ?: 0).toString(), "best score", "${milestones.size} runs reached 2048")
         }
@@ -99,6 +102,8 @@ fun ProgressScreen(padding: PaddingValues) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Block Garden", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text("${history.count { it.game == "Block Garden" }} runs finished", style = MaterialTheme.typography.bodySmall)
+                    Text(blockRunStatus(blocks), style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text((blocks?.bestScore ?: 0).toString(), style = MaterialTheme.typography.headlineSmall,
