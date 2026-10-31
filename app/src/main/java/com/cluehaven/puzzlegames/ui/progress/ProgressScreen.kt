@@ -146,7 +146,7 @@ private fun CompletionHistory(history: List<PlayRecord>) {
     val dateFormat = remember { DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale.getDefault()) }
     Text("Completion history", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("All", "Sudoku", "Tile Merge", "Nonogram", "Pipe Connect", "Block Garden").forEach { name ->
+        listOf("All", "Sudoku", "Tile Merge", "Nonogram", "Pipe Connect", "Block Garden", "Daily Five").forEach { name ->
             FilterChip(selected = name == game, onClick = { game = name }, label = { Text(name) })
         }
     }

@@ -21,6 +21,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Separate install for migration/gameplay QA; never overwrites the user's app or database.
+            if (providers.gradleProperty("isolatedDailyReview").orNull == "true") {
+                applicationIdSuffix = ".dailyreview"
+                versionNameSuffix = "-daily-review"
+                resValue("string", "app_name", "Cluehaven Daily Review")
+            }
+        }
         release {
             optimization {
                 enable = true
@@ -34,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        resValues = true
     }
 }
 

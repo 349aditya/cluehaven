@@ -237,7 +237,7 @@ private fun SudokuChooser(
 }
 
 @Composable
-private fun SudokuPlay(
+internal fun SudokuPlay(
     state: SudokuState,
     padding: PaddingValues,
     goBack: () -> Unit,

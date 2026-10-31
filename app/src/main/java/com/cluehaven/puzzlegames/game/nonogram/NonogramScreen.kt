@@ -141,7 +141,7 @@ fun NonogramScreen(padding: PaddingValues, initialId: String? = null, goBack: ()
 }
 
 @Composable
-private fun NonogramPlay(state: NonogramState, padding: PaddingValues, cross: Boolean, selected: Int,
+internal fun NonogramPlay(state: NonogramState, padding: PaddingValues, cross: Boolean, selected: Int,
     back: () -> Unit, selectMode: (Boolean) -> Unit, mark: (Int) -> Unit, update: (NonogramState) -> Unit) {
     PuzzlePage(padding, "Nonogram", back, footer = {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

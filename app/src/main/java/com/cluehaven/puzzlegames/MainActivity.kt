@@ -81,11 +81,15 @@ import com.cluehaven.puzzlegames.ui.home.SudokuArtwork
 import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
 import com.cluehaven.puzzlegames.ui.progress.ProgressScreen
 import kotlinx.coroutines.launch
+import com.cluehaven.puzzlegames.ui.daily.DailyFiveScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Temporary debug entry for reviewing steps 1–3 without adding the step-4 Home card.
+        val reviewRoute = if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0 &&
+            intent.getBooleanExtra("daily_five_review", false)) "daily_five" else "home"
         setContent {
             val settingsRepository = remember { SettingsRepository(applicationContext) }
             val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
@@ -111,7 +115,7 @@ class MainActivity : ComponentActivity() {
                     CluehavenApp(settings,
                         { mode -> scope.launch { settingsRepository.setThemeMode(mode) } },
                         { enabled -> scope.launch { settingsRepository.setReducedMotion(enabled) } },
-                        { sound, haptics -> scope.launch { settingsRepository.setFeedback(sound, haptics) } })
+                        { sound, haptics -> scope.launch { settingsRepository.setFeedback(sound, haptics) } }, initialRoute = reviewRoute)
                 }
             }
         }
@@ -134,10 +138,11 @@ private val games = listOf(
 )
 
 @Composable
-private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, setMotion: (Boolean) -> Unit, setFeedback: (Boolean, Boolean) -> Unit) {
-    var route by rememberSaveable { mutableStateOf("home") }
+private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, setMotion: (Boolean) -> Unit, setFeedback: (Boolean, Boolean) -> Unit,
+    initialRoute: String = "home") {
+    var route by rememberSaveable { mutableStateOf(initialRoute) }
     val visibleRoute = route.substringBefore('|').takeIf {
-        it == "home" || it == "progress" || it == "settings" || it == "sudoku_daily" ||
+        it == "home" || it == "progress" || it == "settings" || it == "sudoku_daily" || it == "daily_five" ||
             games.any { game -> game.id == it }
     } ?: "home"
 
@@ -149,7 +154,7 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (visibleRoute != "sudoku" && visibleRoute != "sudoku_daily" &&
-                visibleRoute != "tile_merge" && visibleRoute != "nonogram" && visibleRoute != "pipes" && visibleRoute != "blocks") {
+                visibleRoute != "tile_merge" && visibleRoute != "nonogram" && visibleRoute != "pipes" && visibleRoute != "blocks" && visibleRoute != "daily_five") {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.background,
                     modifier = Modifier.navigationBarsPadding().height(64.dp),
                     windowInsets = WindowInsets(0, 0, 0, 0)) {
@@ -175,6 +180,7 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
         },
     ) { padding ->
         when {
+            visibleRoute == "daily_five" -> DailyFiveScreen(padding) { route = "home" }
             visibleRoute == "sudoku" -> SudokuScreen(
                 resumeFreeOnStart = route.endsWith("|free"),
                 padding = padding,

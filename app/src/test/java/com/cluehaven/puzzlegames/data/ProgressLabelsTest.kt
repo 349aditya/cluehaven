@@ -2,6 +2,8 @@ package com.cluehaven.puzzlegames.data
 
 import com.cluehaven.puzzlegames.game.blocks.BlockEngine
 import com.cluehaven.puzzlegames.game.sudoku.*
+import com.cluehaven.puzzlegames.game.daily.*
+import java.time.LocalDate
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -18,5 +20,13 @@ class ProgressLabelsTest {
         assertFalse(state.isComplete)
         assertEquals("In progress · 17 empty cells", sudokuBoardStatus(state))
         assertEquals("Solved board saved", sudokuBoardStatus(state.copy(values = puzzle.solution)))
+    }
+    @Test fun dailyGoalHistoryCannotInflateRegularFinishedRunCountsOrPersonalBests() {
+        val spec = DailyChallengeFactory.spec(LocalDate.of(2026, 10, 31), DailyGame.BLOCKS)
+        val record = BlockEngine.newGame(3).playRecord().copy(completedAt = 123).forDailyFive(spec)
+        assertEquals("Daily Five", record.game)
+        assertEquals(spec.key, record.id)
+        assertTrue(record.category.contains("Block Garden"))
+        assertTrue(personalBests(listOf(record)).isEmpty())
     }
 }

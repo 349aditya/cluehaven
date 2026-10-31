@@ -37,7 +37,7 @@ fun formatPlayTime(millis: Long): String {
 
 /** Only complete, fully timed and unassisted solves compete in the same category. */
 fun personalBests(history: List<PlayRecord>): List<PlayRecord> = history
-    .filter { it.completedAt != null && it.timeKnown && it.hintsUsed == 0 && !isScoreGame(it.game) }
+    .filter { it.completedAt != null && it.timeKnown && it.hintsUsed == 0 && !isScoreGame(it.game) && !it.id.startsWith("dailyfive_") }
     .groupBy { it.game to it.category }
     .values.map { records -> records.minBy { it.elapsedMillis } }
     .sortedWith(compareBy({ it.game }, { it.category }))

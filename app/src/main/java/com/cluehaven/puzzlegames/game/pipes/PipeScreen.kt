@@ -86,8 +86,8 @@ fun PipeScreen(padding: PaddingValues, initialSize: Int = 0, goBack: () -> Unit)
 }
 
 @Composable
-private fun PipePlay(current: PipeState, padding: PaddingValues, paused: Boolean,
-    back: () -> Unit, update: (PipeState) -> Unit, newBoard: () -> Unit) {
+internal fun PipePlay(current: PipeState, padding: PaddingValues, paused: Boolean,
+    back: () -> Unit, update: (PipeState) -> Unit, newBoard: () -> Unit, newBoardLabel: String = "New") {
     val connected = remember(current.tiles) { PipeEngine.connected(current.size, current.tiles) }
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
         .padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -123,7 +123,7 @@ private fun PipePlay(current: PipeState, padding: PaddingValues, paused: Boolean
                 PuzzleAction("Hint", "hint", Modifier.weight(1f), enabled = current.hintsUsed == 0 && !current.isComplete) {
                     update(PipeEngine.hint(current))
                 }
-                PuzzleAction("New", "undo", Modifier.weight(1f), primary = true, onClick = newBoard)
+                PuzzleAction(newBoardLabel, "undo", Modifier.weight(1f), primary = true, onClick = newBoard)
             }
         }
     }

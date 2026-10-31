@@ -69,9 +69,10 @@ import com.cluehaven.puzzlegames.data.SettingsRepository
 import com.cluehaven.puzzlegames.ads.RewardedUndoAds
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import com.cluehaven.puzzlegames.game.daily.DailyGameSession
 
 @Composable
-fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
+fun TileMergeScreen(padding: PaddingValues, daily: DailyGameSession<TileMergeState>? = null, goBack: () -> Unit) {
     val feedback = com.cluehaven.puzzlegames.ui.LocalGameFeedback.current
     val context = LocalContext.current
     val storage = remember(context) { TileMergeStorage.get(context) }
@@ -79,7 +80,7 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
     val settingsRepository = remember(context) { SettingsRepository(context) }
     val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
     val scope = rememberCoroutineScope()
-    val ads = remember(context) { context.findActivity()?.let(::RewardedUndoAds) }
+    val ads = remember(context, daily != null) { if (daily == null) context.findActivity()?.let(::RewardedUndoAds) else null }
     var loadedGame by remember(storage) { mutableStateOf<TileMergeState?>(null) }
     var showRestartDialog by remember { mutableStateOf(false) }
     var showGameOverDialog by remember { mutableStateOf(false) }
@@ -98,11 +99,11 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
         }
     }
 
-    LaunchedEffect(storage) {
-        loadedGame = storage.load().also(progress::recordTile2048)
-        showGameOverDialog = loadedGame?.isGameOver == true
+    LaunchedEffect(storage, daily != null) {
+        if (daily == null) loadedGame = storage.load().also(progress::recordTile2048)
+        showGameOverDialog = (daily?.state ?: loadedGame)?.isGameOver == true
     }
-    val game = loadedGame ?: run {
+    val game = daily?.state ?: loadedGame ?: run {
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
@@ -112,13 +113,21 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
     fun update(next: TileMergeState) {
         feedback()
         loadedGame = next
-        storage.save(next)
-        if (!game.reached2048 && next.reached2048) progress.recordTile2048(next)
+        if (daily != null) daily.update(next) else {
+            storage.save(next)
+            if (!game.reached2048 && next.reached2048) progress.recordTile2048(next)
+        }
         if (!game.isGameOver && next.isGameOver) showGameOverDialog = true
         if (!next.isGameOver) showGameOverDialog = false
     }
 
+    fun restartRun() {
+        if (daily != null) daily.retry() else update(TileMergeEngine.newGame(bestScore = game.bestScore))
+        showGameOverDialog = false
+    }
+
     fun requestAdUndo(ageGroup: AgeGroup) {
+        if (daily != null) return
         if (adLoading || game.undosUsed !in 1..2 || game.history.isEmpty()) return
         val rewardedAds = ads ?: run {
             adError = "Ad unavailable. You can start a new run."
@@ -230,7 +239,7 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
             when {
                 game.isGameOver -> "No moves left · Tap Options"
                 game.reached2048 -> "You reached 2048! Keep merging"
-                else -> "Swipe tiles to merge · Goal: 2048"
+                else -> if (daily != null) "Merge tiles to reach today’s score target" else "Swipe tiles to merge · Goal: 2048"
             },
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
@@ -245,13 +254,13 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
                     Text("Options")
                 }
                 OutlinedButton(
-                    onClick = { update(TileMergeEngine.newGame(bestScore = game.bestScore)) },
+                    onClick = { restartRun() },
                     modifier = Modifier.weight(1f),
-                ) { Text("New run") }
+                ) { Text(if (daily != null) "Retry" else "New run") }
             } else {
                 PuzzleAction("Undo", "undo", Modifier.weight(1f),
                     enabled = game.undosUsed == 0 && game.history.isNotEmpty()) { update(TileMergeEngine.undo(game)) }
-                PuzzleAction("New run", "new", Modifier.weight(1f), primary = true) { showRestartDialog = true }
+                PuzzleAction(if (daily != null) "Retry" else "New run", "new", Modifier.weight(1f), primary = true) { showRestartDialog = true }
             }
         }
     }
@@ -275,6 +284,7 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
                             onClick = { update(TileMergeEngine.undo(game)) },
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text("Undo last move · Free") }
+                        daily != null -> Text("Your free undo has been used. Retry keeps the same daily puzzle.")
                         game.undosUsed < 3 && ads?.isAvailable == true -> Button(
                             onClick = {
                                 val ageGroup = settings.ageGroup
@@ -303,9 +313,9 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
                 TextButton(onClick = {
                     ads?.cancel()
                     adLoading = false
-                    update(TileMergeEngine.newGame(bestScore = game.bestScore))
+                    restartRun()
                     showGameOverDialog = false
-                }) { Text("New game") }
+                }) { Text(if (daily != null) "Retry" else "New game") }
             },
             dismissButton = {
                 TextButton(onClick = {
@@ -353,13 +363,13 @@ fun TileMergeScreen(padding: PaddingValues, goBack: () -> Unit) {
     if (showRestartDialog) {
         AlertDialog(
             onDismissRequest = { showRestartDialog = false },
-            title = { Text("Start a new run?") },
-            text = { Text("Your current board will be replaced. Your best score stays.") },
+            title = { Text(if (daily != null) "Retry today’s challenge?" else "Start a new run?") },
+            text = { Text(if (daily != null) "The same starting board will be restored." else "Your current board will be replaced. Your best score stays.") },
             confirmButton = {
                 TextButton(onClick = {
-                    update(TileMergeEngine.newGame(bestScore = game.bestScore))
+                    restartRun()
                     showRestartDialog = false
-                }) { Text("New run") }
+                }) { Text(if (daily != null) "Retry" else "New run") }
             },
             dismissButton = {
                 TextButton(onClick = { showRestartDialog = false }) { Text("Keep playing") }

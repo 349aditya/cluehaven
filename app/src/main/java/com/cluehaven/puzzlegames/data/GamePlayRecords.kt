@@ -5,6 +5,7 @@ import com.cluehaven.puzzlegames.game.nonogram.*
 import com.cluehaven.puzzlegames.game.pipes.*
 import com.cluehaven.puzzlegames.game.tilemerge.*
 import com.cluehaven.puzzlegames.game.blocks.BlockState
+import com.cluehaven.puzzlegames.game.daily.DailySpec
 
 fun SudokuState.playRecord() = PlayRecord(
     "sudoku_${puzzle.id}", "Sudoku", "${puzzle.difficulty.name.lowercase().replaceFirstChar { it.uppercase() }} · ${puzzle.size}×${puzzle.size}",
@@ -23,3 +24,6 @@ fun PipeState.playRecord() = PlayRecord("pipes_${size}_$seed", "Pipe Connect", "
 fun TileMergeState.playRecord() = PlayRecord("tile_${runId.ifBlank { "legacy-$rngState" }}", "Tile Merge", "4×4", "Run ended", score = score)
 
 fun BlockState.playRecord() = PlayRecord("blocks_$runId", "Block Garden", "8×8", "Run ended · $lines lines cleared", score = score)
+
+fun PlayRecord.forDailyFive(spec: DailySpec): PlayRecord = copy(id = spec.key, game = "Daily Five",
+    category = "${spec.game.title} · ${spec.difficulty.label} · ${spec.date}", title = spec.objective)

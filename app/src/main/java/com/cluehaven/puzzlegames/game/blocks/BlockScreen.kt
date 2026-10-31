@@ -34,6 +34,7 @@ import com.cluehaven.puzzlegames.data.playRecord
 import com.cluehaven.puzzlegames.ui.*
 import com.cluehaven.puzzlegames.ui.theme.*
 import kotlin.math.roundToInt
+import com.cluehaven.puzzlegames.game.daily.DailyGameSession
 
 private data class BlockDrag(val slot: Int, val pointer: Offset)
 private fun blockColor(value: Int) = when (value) {
@@ -44,15 +45,18 @@ private fun blockColor(value: Int) = when (value) {
 }
 
 @Composable
-fun BlockScreen(padding: PaddingValues, goBack: () -> Unit) {
+fun BlockScreen(padding: PaddingValues, daily: DailyGameSession<BlockState>? = null, goBack: () -> Unit) {
     val context = LocalContext.current
     val storage = remember(context) { BlockStorage.get(context) }
     val feedback = LocalGameFeedback.current
     var loaded by remember { mutableStateOf<BlockState?>(null) }
     var restart by remember { mutableStateOf(false) }
     var showOver by remember { mutableStateOf(false) }
-    LaunchedEffect(storage) { loaded = storage.load(); showOver = loaded?.isGameOver == true }
-    val game = loaded ?: run {
+    LaunchedEffect(storage, daily != null) {
+        if (daily == null) loaded = storage.load()
+        showOver = (daily?.state ?: loaded)?.isGameOver == true
+    }
+    val game = daily?.state ?: loaded ?: run {
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
@@ -81,7 +85,7 @@ fun BlockScreen(padding: PaddingValues, goBack: () -> Unit) {
         if (next == game) return
         feedback()
         loaded = next
-        storage.save(next)
+        if (daily != null) daily.update(next) else storage.save(next)
         selected = -1
         drag = null
         showOver = next.isGameOver
@@ -90,6 +94,10 @@ fun BlockScreen(padding: PaddingValues, goBack: () -> Unit) {
             next.undoUsed && !game.undoUsed -> "Last placement restored · Undo used for this run"
             else -> "Drag a block, or select one and tap the board."
         }
+    }
+    fun restartRun() {
+        showOver = false
+        if (daily != null) daily.retry() else update(BlockEngine.newGame(bestScore = game.bestScore))
     }
     fun place(slot: Int, row: Int, column: Int) {
         val next = BlockEngine.place(game, slot, row, column)
@@ -112,7 +120,7 @@ fun BlockScreen(padding: PaddingValues, goBack: () -> Unit) {
             PuzzleAction("Undo", "undo", Modifier.weight(1f), enabled = !game.undoUsed && game.previous != null) {
                 update(BlockEngine.undo(game))
             }
-            PuzzleAction("New run", "new", Modifier.weight(1f), primary = true) { restart = true }
+            PuzzleAction(if (daily != null) "Retry" else "New run", "new", Modifier.weight(1f), primary = true) { restart = true }
         }
     }) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -192,11 +200,11 @@ fun BlockScreen(padding: PaddingValues, goBack: () -> Unit) {
         }
     }
     }
-    if (restart) AlertDialog(onDismissRequest = { restart = false }, title = { Text("Start a new garden?") },
-        text = { Text("Your current board will be replaced. Your best score stays.") },
-        confirmButton = { TextButton(onClick = { restart = false; update(BlockEngine.newGame(bestScore = game.bestScore)) }) { Text("New run") } },
+    if (restart) AlertDialog(onDismissRequest = { restart = false }, title = { Text(if (daily != null) "Retry today’s challenge?" else "Start a new garden?") },
+        text = { Text(if (daily != null) "The same starting board will be restored." else "Your current board will be replaced. Your best score stays.") },
+        confirmButton = { TextButton(onClick = { restart = false; restartRun() }) { Text(if (daily != null) "Retry" else "New run") } },
         dismissButton = { TextButton(onClick = { restart = false }) { Text("Keep playing") } })
-    if (showOver) AlertDialog(onDismissRequest = { showOver = false }, title = { Text("Garden complete") },
+    if (showOver) AlertDialog(onDismissRequest = { showOver = false }, title = { Text(if (daily != null) "Run ended" else "Garden complete") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("No remaining blocks fit. Score ${game.score} · ${game.lines} lines cleared.")
@@ -206,7 +214,7 @@ fun BlockScreen(padding: PaddingValues, goBack: () -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { showOver = false; update(BlockEngine.newGame(bestScore = game.bestScore)) }) { Text("New run") } },
+        confirmButton = { TextButton(onClick = { showOver = false; restartRun() }) { Text(if (daily != null) "Retry" else "New run") } },
         dismissButton = { TextButton(onClick = { showOver = false }) { Text("View board") } })
 }
 

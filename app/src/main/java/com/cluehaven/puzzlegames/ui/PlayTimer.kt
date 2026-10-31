@@ -13,10 +13,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.*
 import com.cluehaven.puzzlegames.data.*
 import kotlinx.coroutines.delay
+import com.cluehaven.puzzlegames.ui.daily.LocalDailyTimer
 
 @Composable
 fun PlayTimerLine(initial: PlayRecord, previouslyPlayed: Boolean, finished: Boolean, modifier: Modifier = Modifier,
     paused: Boolean = false, alignment: Arrangement.Horizontal = Arrangement.Center) {
+    val daily = LocalDailyTimer.current
+    if (daily != null) {
+        CompositionLocalProvider(LocalDailyTimer provides null) {
+            PlayTimerLine(initial.forDailyFive(daily.spec),
+                previouslyPlayed, daily.complete, modifier, paused, alignment)
+        }
+        return
+    }
     val context = LocalContext.current
     val repository = remember(context) { PlayRecordRepository.get(context) }
     val owner = remember(context) {
