@@ -1,8 +1,8 @@
 # Daily Five steps 1–3: migration review
 
-Status: prepared for review. Do not install this build over the development app until
-the migration has been reviewed. Isolated database tests may exercise the migration;
-they do not modify the installed app's database.
+Status: approved by the user on 31 October 2026 and applied to the main app during
+step 4, after the steps 1–3 work was committed in order. The database was backed up
+and all existing saved values were compared before and after the upgrade.
 
 ## Version 4 → 5
 
@@ -47,7 +47,8 @@ SET difficulty = CASE WHEN gameId = 'nonogram' THEN 'EASY' ELSE 'MEDIUM' END,
   immutable saved targets, score thresholds, duplicate callbacks, permanent growth,
   and transactional rollback of the fifth completion if awarding the bonus fails.
 
-The Home card, Haven scene, and weekly streak calculation remain deferred for review.
+The Home card and Haven scene are implemented in step 4. Weekly streak calculation
+remains deferred until step 5.
 
 ## Verification results — 31 October 2026
 
@@ -59,10 +60,19 @@ The Home card, Haven scene, and weekly streak calculation remain deferred for re
   2 → 3 → 4 → 5 chains, file-backed close/reopen, concurrent starts and duplicate
   completions, threshold changes, legacy goal preservation, and forced bonus-write
   failure rolling back the fifth completion.
-- The installed `com.cluehaven.puzzlegames` app has not been updated by this pass.
+- The installed `com.cluehaven.puzzlegames` app was not updated during this steps 1–3
+  verification pass. The subsequent approved step-4 upgrade is recorded below.
 - Phone screen checks covered Sudoku Easy, Nonogram Hard, Pipe Connect Medium,
   Tile Merge Hard (2,000 points), and Block Garden Medium (3,000 points). After a
   pipe rotation, force-stop/resume restored the exact moved board and the locked
   Medium difficulty; Retry restored the exact initial board. Captures are in the
   ignored `output/daily-five-v5-review/` directory. The separate review app is left
   on its Daily Five hub with no daily completions awarded during these UI checks.
+
+## Approved main-app upgrade — step 4
+
+The main database upgraded from version 4 to 5. Before/after comparisons retained
+all original column values in all six tables: 8 puzzle sessions, 0 Sudoku completion
+rows, 0 Tile Merge milestone rows, 17 play records, 1 daily day, and 5 daily entries.
+Opening Home, Haven, and Progress did not create any completion or bonus.
+The ignored backup and comparison report are in `output/haven-step4/`.

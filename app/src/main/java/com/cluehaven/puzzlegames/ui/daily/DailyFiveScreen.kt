@@ -26,9 +26,9 @@ import java.time.LocalDate
 internal data class DailyTimerContext(val spec: DailySpec, val complete: Boolean)
 internal val LocalDailyTimer = staticCompositionLocalOf<DailyTimerContext?> { null }
 
-/** Internal flow for step-3 review. The Home entry and Haven scene follow after review. */
+/** Daily-only game flow, entered from Home or the Haven's per-game buttons. */
 @Composable
-fun DailyFiveScreen(padding: PaddingValues, goBack: () -> Unit) {
+fun DailyFiveScreen(padding: PaddingValues, initialGame: String? = null, goBack: () -> Unit) {
     val context = LocalContext.current
     val repository = remember(context) { DailyHavenRepository.get(context) }
     val today = rememberCurrentDate()
@@ -40,7 +40,7 @@ fun DailyFiveScreen(padding: PaddingValues, goBack: () -> Unit) {
     val observedDay by dayFlow.collectAsState(initial = null)
     val entries = observedEntries.filter { it.date == dateText }
     val day = observedDay?.takeIf { it.date == dateText }
-    var selected by rememberSaveable { mutableStateOf<String?>(null) }
+    var selected by rememberSaveable { mutableStateOf(initialGame?.takeIf { key -> DailyGame.entries.any { it.key == key } }) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     // The list rolls over locally, while a puzzle already in play keeps its original date.

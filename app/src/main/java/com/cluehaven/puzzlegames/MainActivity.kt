@@ -81,13 +81,13 @@ import com.cluehaven.puzzlegames.ui.home.SudokuArtwork
 import com.cluehaven.puzzlegames.ui.home.TileMergeArtwork
 import com.cluehaven.puzzlegames.ui.progress.ProgressScreen
 import kotlinx.coroutines.launch
-import com.cluehaven.puzzlegames.ui.daily.DailyFiveScreen
+import com.cluehaven.puzzlegames.ui.daily.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Temporary debug entry for reviewing steps 1–3 without adding the step-4 Home card.
+        // Debug shortcut; normal entry points are Home and Haven.
         val reviewRoute = if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0 &&
             intent.getBooleanExtra("daily_five_review", false)) "daily_five" else "home"
         setContent {
@@ -141,12 +141,13 @@ private val games = listOf(
 private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, setMotion: (Boolean) -> Unit, setFeedback: (Boolean, Boolean) -> Unit,
     initialRoute: String = "home") {
     var route by rememberSaveable { mutableStateOf(initialRoute) }
+    var dailyReturnRoute by rememberSaveable { mutableStateOf("home") }
     val visibleRoute = route.substringBefore('|').takeIf {
-        it == "home" || it == "progress" || it == "settings" || it == "sudoku_daily" || it == "daily_five" ||
+        it == "home" || it == "haven" || it == "progress" || it == "settings" || it == "sudoku_daily" || it == "daily_five" ||
             games.any { game -> game.id == it }
     } ?: "home"
 
-    BackHandler(enabled = visibleRoute == "progress" || visibleRoute == "settings") {
+    BackHandler(enabled = visibleRoute == "haven" || visibleRoute == "progress" || visibleRoute == "settings") {
         route = "home"
     }
 
@@ -158,7 +159,7 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
                 NavigationBar(containerColor = MaterialTheme.colorScheme.background,
                     modifier = Modifier.navigationBarsPadding().height(64.dp),
                     windowInsets = WindowInsets(0, 0, 0, 0)) {
-                    listOf("home" to "Home", "progress" to "Progress", "settings" to "Settings")
+                    listOf("home" to "Home", "haven" to "Haven", "progress" to "Progress", "settings" to "Settings")
                         .forEach { (id, label) ->
                             NavigationBarItem(
                                 selected = visibleRoute == id,
@@ -180,7 +181,12 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
         },
     ) { padding ->
         when {
-            visibleRoute == "daily_five" -> DailyFiveScreen(padding) { route = "home" }
+            visibleRoute == "daily_five" -> DailyFiveScreen(padding,
+                initialGame = route.substringAfter('|', "").ifEmpty { null }) { route = dailyReturnRoute }
+            visibleRoute == "haven" -> HavenScreen(padding, rememberHavenProgress()) { game ->
+                dailyReturnRoute = "haven"
+                route = "daily_five|${game.key}"
+            }
             visibleRoute == "sudoku" -> SudokuScreen(
                 resumeFreeOnStart = route.endsWith("|free"),
                 padding = padding,
@@ -197,7 +203,10 @@ private fun CluehavenApp(settings: AppSettings, setTheme: (ThemeMode) -> Unit, s
             visibleRoute == "blocks" -> BlockScreen(padding) { route = "home" }
             visibleRoute == "progress" -> ProgressScreen(padding)
             visibleRoute == "settings" -> SettingsScreen(padding, settings, setTheme, setMotion, setFeedback)
-            else -> HomeScreen(padding) { route = it }
+            else -> HomeScreen(padding) {
+                if (it.substringBefore('|') == "daily_five") dailyReturnRoute = "home"
+                route = it
+            }
         }
     }
 }
@@ -268,6 +277,7 @@ private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
     val sessions by sessionFlow.collectAsState(initial = emptyList())
     val today = rememberCurrentDate()
     val resume = sessions.firstNotNullOfOrNull { resumeEntry(it, today) }
+    val havenProgress = rememberHavenProgress()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -285,29 +295,21 @@ private fun HomeScreen(padding: PaddingValues, openGame: (String) -> Unit) {
             }
         }
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            shape = RoundedCornerShape(20.dp),
-        ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        DailyFiveHomeCard(havenProgress, openDaily = { openGame("daily_five") },
+            openGame = { openGame("daily_five|${it.key}") })
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(18.dp), border = BorderStroke(.5.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(if (resume == null) "Today's puzzle" else "Continue playing", color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(resume?.title ?: "A fresh Sudoku challenge, at your pace", color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    style = MaterialTheme.typography.bodySmall)
-                Text("At your pace", style = MaterialTheme.typography.labelSmall)
+                    Text(if (resume == null) "A little more play" else "Continue playing",
+                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(resume?.title ?: "Today's Sudoku", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
-                when (resume?.route?.substringBefore('|')) {
-                    "pipes" -> PipeArtwork(64.dp)
-                    "nonogram" -> NonogramArtwork(64.dp)
-                    "tile_merge" -> TileMergeArtwork(64.dp)
-                    "blocks" -> BlockGardenArtwork(64.dp)
-                    else -> SudokuArtwork(64.dp)
+                OutlinedButton(onClick = { openGame(resume?.route ?: "sudoku_daily") }) {
+                    Text(if (resume == null) "Play" else "Resume", style = MaterialTheme.typography.labelLarge)
                 }
-                }
-                PuzzleAction(if (resume == null) "Play today's puzzle" else "Continue", "play",
-                    Modifier.fillMaxWidth(), primary = true) { openGame(resume?.route ?: "sudoku_daily") }
             }
         }
 

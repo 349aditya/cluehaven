@@ -112,6 +112,17 @@ fun NavigationSymbol(id: String, color: androidx.compose.ui.graphics.Color) {
                     lineTo(w * .13f, h); lineTo(w * .13f, h * .42f); close() }
                 drawPath(roof, color)
             }
+            "haven" -> {
+                val stem = Path().apply {
+                    moveTo(w * .5f, h * .94f); lineTo(w * .5f, h * .42f)
+                    cubicTo(w * .5f, h * .2f, w * .23f, h * .1f, w * .14f, h * .18f)
+                    cubicTo(w * .15f, h * .4f, w * .35f, h * .49f, w * .5f, h * .42f)
+                    moveTo(w * .5f, h * .61f)
+                    cubicTo(w * .56f, h * .35f, w * .77f, h * .3f, w * .87f, h * .34f)
+                    cubicTo(w * .84f, h * .58f, w * .67f, h * .69f, w * .5f, h * .61f)
+                }
+                drawPath(stem, color, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
+            }
             "progress" -> repeat(4) { bar ->
                 val top = h * (0.65f - bar * .18f)
                 drawLine(color, Offset(w * (bar + .5f) / 4, h), Offset(w * (bar + .5f) / 4, top), w / 7)
