@@ -27,7 +27,7 @@ class PlayRecordMigrationTest {
             db.version = 2
         }
         val room = Room.databaseBuilder(context, CluehavenDatabase::class.java, name)
-            .addMigrations(CluehavenDatabase.migration2to3).build()
+            .addMigrations(CluehavenDatabase.migration2to3, CluehavenDatabase.migration3to4, CluehavenDatabase.migration4to5).build()
         try {
             val db = room.openHelper.writableDatabase
             db.query("SELECT payload FROM puzzle_sessions").use { assertTrue(it.moveToFirst()); assertEquals("saved-board", it.getString(0)) }

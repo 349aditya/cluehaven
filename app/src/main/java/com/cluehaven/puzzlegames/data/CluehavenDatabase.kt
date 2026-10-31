@@ -73,17 +73,44 @@ interface ProgressDao {
 }
 
 @Database(
-    entities = [PuzzleSession::class, SudokuCompletion::class, TileMergeMilestone::class, PlayRecord::class],
-    version = 3,
+    entities = [PuzzleSession::class, SudokuCompletion::class, TileMergeMilestone::class, PlayRecord::class,
+        DailyHavenDay::class, DailyHavenEntry::class],
+    version = 5,
     exportSchema = false,
 )
 abstract class CluehavenDatabase : RoomDatabase() {
     abstract fun puzzleSessions(): PuzzleSessionDao
     abstract fun progress(): ProgressDao
     abstract fun playRecords(): PlayRecordDao
+    abstract fun dailyHaven(): DailyHavenDao
 
     companion object {
         @Volatile private var instance: CluehavenDatabase? = null
+
+        internal val migration4to5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE daily_haven_days ADD COLUMN requiredGamesForStreak INTEGER NOT NULL DEFAULT 5")
+                db.execSQL("ALTER TABLE daily_haven_entries ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'MEDIUM'")
+                db.execSQL("ALTER TABLE daily_haven_entries ADD COLUMN objectiveKind TEXT NOT NULL DEFAULT 'SOLVE'")
+                // v4 pre-created five entries per opened date. Preserve their snapshots and original goals.
+                db.execSQL("""UPDATE daily_haven_entries
+                    SET difficulty = CASE WHEN gameId = 'nonogram' THEN 'EASY' ELSE 'MEDIUM' END,
+                        objectiveKind = CASE WHEN gameId = 'tile_merge' THEN 'TILE_VALUE'
+                                             WHEN gameId = 'blocks' THEN 'LINES' ELSE 'SOLVE' END""")
+            }
+        }
+
+        internal val migration3to4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""CREATE TABLE IF NOT EXISTS `daily_haven_days` (
+                    `date` TEXT NOT NULL, `bonusAwardedAt` INTEGER, PRIMARY KEY(`date`))""")
+                db.execSQL("""CREATE TABLE IF NOT EXISTS `daily_haven_entries` (
+                    `date` TEXT NOT NULL, `gameId` TEXT NOT NULL, `seed` INTEGER NOT NULL,
+                    `target` INTEGER NOT NULL, `generatorVersion` INTEGER NOT NULL,
+                    `initialPayload` TEXT NOT NULL, `currentPayload` TEXT NOT NULL,
+                    `updatedAt` INTEGER NOT NULL, `completedAt` INTEGER, PRIMARY KEY(`date`, `gameId`))""")
+            }
+        }
 
         internal val migration2to3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -131,7 +158,7 @@ abstract class CluehavenDatabase : RoomDatabase() {
                 context.applicationContext,
                 CluehavenDatabase::class.java,
                 "cluehaven.db",
-            ).addMigrations(migration1to2, migration2to3).build().also { instance = it }
+            ).addMigrations(migration1to2, migration2to3, migration3to4, migration4to5).build().also { instance = it }
         }
     }
 }
