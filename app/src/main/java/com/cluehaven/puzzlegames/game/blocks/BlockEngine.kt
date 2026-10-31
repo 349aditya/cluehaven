@@ -27,7 +27,7 @@ data class BlockState(
     val previous: BlockSnapshot? = null,
     val lastCleared: Set<Int> = emptySet(),
 ) {
-    val isGameOver: Boolean get() = tray.filterNotNull().none { BlockEngine.placements(board, BlockEngine.shape(it)).isNotEmpty() }
+    val isGameOver: Boolean get() = tray.none { it != null && BlockEngine.hasPlacement(board, BlockEngine.shape(it)) }
 }
 
 object BlockEngine {
@@ -64,6 +64,14 @@ object BlockEngine {
         (0..SIZE - shape.height).flatMap { r -> (0..SIZE - shape.width).mapNotNull { c ->
             if (canPlace(board, shape, r, c)) BlockCell(r, c) else null
         } }
+
+    /** Availability checks do not need to allocate every possible landing position. */
+    fun hasPlacement(board: List<Int>, shape: BlockShape): Boolean {
+        for (row in 0..SIZE - shape.height) for (column in 0..SIZE - shape.width) {
+            if (canPlace(board, shape, row, column)) return true
+        }
+        return false
+    }
 
     internal data class ClearResult(val board: List<Int>, val indices: Set<Int>, val lines: Int)
     internal fun clear(board: List<Int>): ClearResult {

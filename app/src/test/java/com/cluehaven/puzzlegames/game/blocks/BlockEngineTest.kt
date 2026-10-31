@@ -5,6 +5,17 @@ import org.junit.Test
 import kotlin.random.Random
 
 class BlockEngineTest {
+    @Test fun fastAvailabilityMatchesAllPlacementsOnSparseAndCrowdedBoards() {
+        val random = Random(812)
+        repeat(100) { sample ->
+            val board = List(64) { if (random.nextInt(100) < sample) random.nextInt(1, 5) else 0 }
+            BlockEngine.shapes.forEach { shape ->
+                assertEquals("${shape.id} at occupancy $sample", BlockEngine.placements(board, shape).isNotEmpty(),
+                    BlockEngine.hasPlacement(board, shape))
+            }
+        }
+    }
+
     private fun state(board: List<Int> = List(64) { 0 }, tray: List<String?> = listOf("dot", "dot", "h2")) =
         BlockEngine.newGame(7).copy(board = board, tray = tray)
 
