@@ -29,7 +29,12 @@ import com.cluehaven.puzzlegames.ui.ActionSymbol
 import com.cluehaven.puzzlegames.ui.PuzzleAction
 import com.cluehaven.puzzlegames.ui.home.*
 import com.cluehaven.puzzlegames.ui.rememberCurrentDate
+import com.cluehaven.puzzlegames.ui.theme.Gold
+import com.cluehaven.puzzlegames.ui.theme.Coral
 import kotlinx.coroutines.flow.map
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 @Composable
 fun rememberHavenProgress(): HavenProgress {
@@ -37,7 +42,7 @@ fun rememberHavenProgress(): HavenProgress {
     val repository = remember(context) { DailyHavenRepository.get(context) }
     val today = rememberCurrentDate()
     val progressFlow = remember(repository, today) {
-        repository.observeEntries(today).map { HavenProgress.from(today, it) }
+        repository.observeHaven(today).map { HavenProgress.from(today, it.entries, it.dailyResults) }
     }
     val saved by progressFlow.collectAsState(initial = HavenProgress(today, loaded = false))
     return saved.takeIf { it.date == today } ?: HavenProgress(today, loaded = false)
@@ -58,6 +63,8 @@ fun DailyFiveHomeCard(progress: HavenProgress, openDaily: () -> Unit, openGame: 
             DailyFiveProgressBar(progress)
             Text(progress.waitingMessage, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer)
+            if (progress.loaded) Text("Haven streak · ${progress.streak.countLabel}",
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             PuzzleAction("Continue Daily Five", "play", Modifier.fillMaxWidth(), primary = true,
                 enabled = progress.loaded, onClick = openDaily)
         }
@@ -110,27 +117,65 @@ fun HavenScreen(padding: PaddingValues, progress: HavenProgress, openGame: (Dail
                 DailyFiveGameRow(progress, artwork = false, openGame = openGame)
             }
         }
-        HavenStreakPlaceholder()
+        HavenStreakCard(progress.streak, progress.loaded)
     }
 }
 
 @Composable
-private fun HavenStreakPlaceholder() {
+private fun HavenStreakCard(streak: HavenStreak, loaded: Boolean) {
     Card(shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Haven streak", Modifier.weight(1f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                Text("Coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                Text(if (loaded) "Haven streak · ${streak.countLabel}" else "Loading streak…",
+                    fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             }
-            Text("Weekly streaks and automatic rest days are coming next.", style = MaterialTheme.typography.bodySmall,
+            Text(if (loaded) streak.restLabel else "Checking saved days…", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.clearAndSetSemantics { }) {
-                repeat(7) {
-                    Surface(Modifier.size(10.dp), shape = CircleShape, color = MaterialTheme.colorScheme.outlineVariant) { }
+            val locale = Locale.getDefault()
+            val dateFormat = remember(locale) { DateTimeFormatter.ofPattern("EEEE, d MMM", locale) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                streak.week.forEach { day ->
+                    val status = day.status
+                    val accent = when (status) {
+                        HavenDayStatus.COMPLETED -> MaterialTheme.colorScheme.primary
+                        HavenDayStatus.FORGIVEN -> Gold
+                        HavenDayStatus.MISSED -> Coral
+                        HavenDayStatus.PENDING -> MaterialTheme.colorScheme.outline
+                    }
+                    val detail = when {
+                        !loaded -> "loading"
+                        day.beforeFirstUse -> "pending, before your first Daily Five"
+                        day.date.isAfter(streak.today) -> "pending, upcoming"
+                        status == HavenDayStatus.FORGIVEN -> "forgiven rest day"
+                        else -> status.name.lowercase() + if (day.date == streak.today) ", today" else ""
+                    }
+                    Column(Modifier.weight(1f).clearAndSetSemantics {
+                        contentDescription = "${day.date.format(dateFormat)}: $detail"
+                    }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Surface(Modifier.size(28.dp), shape = CircleShape,
+                            color = when (status) {
+                                HavenDayStatus.COMPLETED -> accent
+                                HavenDayStatus.FORGIVEN, HavenDayStatus.MISSED -> accent.copy(alpha = .17f)
+                                HavenDayStatus.PENDING -> Color.Transparent
+                            }, border = BorderStroke(if (day.date == streak.today) 2.dp else 1.dp,
+                                if (day.date == streak.today && status == HavenDayStatus.PENDING) MaterialTheme.colorScheme.primary else accent)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                if (status == HavenDayStatus.COMPLETED) DoneMark(MaterialTheme.colorScheme.onPrimary, Modifier.size(16.dp))
+                                else Text(when (status) { HavenDayStatus.FORGIVEN -> "–"; HavenDayStatus.MISSED -> "×"; else -> "·" },
+                                    color = if (status == HavenDayStatus.PENDING) MaterialTheme.colorScheme.onSurfaceVariant else accent,
+                                    style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                        Text(day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale), style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             }
+            Text("✓ Done   – Rest   · Pending   × Missed", style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (loaded && streak.firstUseDate == null) Text("Complete today's Daily Five to start your streak.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

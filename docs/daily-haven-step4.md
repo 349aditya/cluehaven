@@ -63,5 +63,6 @@ Step 4 was approved by the user and committed before starting step 5.
   leaving the hub. The main app is left on Haven for review, with zero daily
   completions awarded by these checks.
 
-Step 5 (weekly Haven streaks and automatic rest days) has not been implemented.
-The Nonogram expansion remains a separate follow-up task.
+Step 5 was deferred during the approved step-4 work. Its subsequent implementation
+is documented in [the streak review](haven-streak.md). The Nonogram expansion remains
+a separate follow-up task.
