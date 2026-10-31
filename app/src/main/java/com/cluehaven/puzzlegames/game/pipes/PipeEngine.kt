@@ -20,7 +20,7 @@ object PipeEngine {
     fun rotate(mask: Int): Int = ((mask shl 1) and 15) or (mask shr 3)
 
     fun newGame(size: Int, seed: Long = System.nanoTime()): PipeState {
-        require(size in setOf(4, 6))
+        require(size in 4..6)
         val random = Random(seed)
         val solution = MutableList(size * size) { 0 }
         val visited = mutableSetOf(0)

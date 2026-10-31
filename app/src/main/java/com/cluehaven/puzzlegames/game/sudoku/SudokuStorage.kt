@@ -8,8 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
 class SudokuStorage private constructor(context: Context) {
@@ -21,20 +19,20 @@ class SudokuStorage private constructor(context: Context) {
     init {
         scope.launch {
             for ((key, state) in saves) {
-                sessions.save(PuzzleSession(key, encode(state), System.currentTimeMillis()))
+                sessions.save(PuzzleSession(key, SudokuCodec.encode(state), System.currentTimeMillis()))
             }
         }
     }
 
     suspend fun load(key: String): SudokuState? {
         latest[key]?.let { return it }
-        val state = sessions.get(key)?.payload?.let(::decode) ?: return null
+        val state = sessions.get(key)?.payload?.let(SudokuCodec::decode) ?: return null
         latest[key] = state
         return state
     }
 
     suspend fun completedDailyPuzzles(): List<SudokuState> =
-        sessions.dailySudokuSessions().mapNotNull { decode(it.payload) }
+        sessions.dailySudokuSessions().mapNotNull { SudokuCodec.decode(it.payload) }
             .filter { it.isComplete }
 
     fun save(state: SudokuState) {
@@ -47,61 +45,6 @@ class SudokuStorage private constructor(context: Context) {
         SudokuMode.FREE -> FREE_KEY
         SudokuMode.DAILY -> "sudoku_${state.puzzle.id}"
     }
-
-    private fun encode(state: SudokuState): String = JSONObject()
-        .put("id", state.puzzle.id)
-        .put("difficulty", state.puzzle.difficulty.name)
-        .put("mode", state.mode.name)
-        .put("givens", JSONArray(state.puzzle.givens))
-        .put("solution", JSONArray(state.puzzle.solution))
-        .put("values", JSONArray(state.values))
-        .put("notes", JSONArray(state.notes))
-        .put("selected", state.selected)
-        .put("noteMode", state.noteMode)
-        .put("hintsUsed", state.hintsUsed)
-        .put("history", JSONArray().apply {
-            state.history.forEach { snapshot ->
-                put(JSONObject().put("values", JSONArray(snapshot.values))
-                    .put("notes", JSONArray(snapshot.notes)))
-            }
-        })
-        .toString()
-
-    private fun decode(payload: String): SudokuState? = try {
-        val json = JSONObject(payload)
-        val puzzle = SudokuPuzzle(
-            id = json.getString("id"),
-            difficulty = SudokuDifficulty.valueOf(json.getString("difficulty")),
-            givens = json.getJSONArray("givens").toIntList(),
-            solution = json.getJSONArray("solution").toIntList(),
-        )
-        val history = json.getJSONArray("history").let { array ->
-            (0 until array.length()).map { index ->
-                array.getJSONObject(index).let { item ->
-                    SudokuSnapshot(item.getJSONArray("values").toIntList(),
-                        item.getJSONArray("notes").toIntList())
-                }
-            }
-        }
-        val state = SudokuState(
-            puzzle = puzzle,
-            mode = SudokuMode.valueOf(json.getString("mode")),
-            values = json.getJSONArray("values").toIntList(),
-            notes = json.getJSONArray("notes").toIntList(),
-            selected = json.getInt("selected"),
-            noteMode = json.getBoolean("noteMode"),
-            hintsUsed = json.getInt("hintsUsed"),
-            history = history,
-        )
-        val cells = puzzle.givens.size
-        if (cells in setOf(36, 81) &&
-            listOf(state.values, state.notes, puzzle.solution).all { it.size == cells } &&
-            state.selected in 0 until cells && state.hintsUsed in 0..3 &&
-            history.all { it.values.size == cells && it.notes.size == cells }
-        ) state else null
-    } catch (_: Exception) { null }
-
-    private fun JSONArray.toIntList(): List<Int> = (0 until length()).map { getInt(it) }
 
     companion object {
         const val FREE_KEY = "sudoku_free"

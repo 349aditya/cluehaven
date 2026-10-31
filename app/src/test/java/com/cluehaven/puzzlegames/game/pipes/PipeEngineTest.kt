@@ -12,7 +12,7 @@ class PipeEngineTest {
         assertEquals(3, PipeEngine.rotate(9))
     }
     @Test fun generatedBoardsAreSolvableAndScrambled() {
-        for (size in listOf(4, 6)) for (seed in 0L..99L) {
+        for (size in listOf(4, 5, 6)) for (seed in 0L..99L) {
             val state = PipeEngine.newGame(size, seed)
             assertFalse(state.isComplete)
             assertTrue(state.copy(tiles = state.solution).isComplete)
