@@ -11,6 +11,7 @@ data class NonogramPuzzle(
     val title: String = "Picture",
     val difficulty: NonogramDifficulty = if (size == 5) NonogramDifficulty.EASY else NonogramDifficulty.MEDIUM,
     val sourceId: String = id,
+    val endless: EndlessNonogramInfo? = null,
 ) {
     val number: Int get() = sourceId.substringAfterLast('-').toInt() + 1
     init {
