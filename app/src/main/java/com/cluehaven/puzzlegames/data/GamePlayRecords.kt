@@ -14,7 +14,7 @@ fun SudokuState.playRecord() = PlayRecord(
 )
 
 fun NonogramState.playRecord() = PlayRecord(
-    "nonogram_${puzzle.id}", "Nonogram", "${puzzle.size}×${puzzle.size} · ${puzzle.difficulty.label}",
+    "nonogram_${puzzle.id}", "Nonogram", (if (puzzle.endless != null) "Endless · " else "") + "${puzzle.size}×${puzzle.size} · ${puzzle.difficulty.label}",
     if (puzzle.id.startsWith("daily-")) "Daily · ${puzzle.id.removePrefix("daily-")} · ${puzzle.title}" else puzzle.title,
     hintsUsed = hintsUsed,
 )

@@ -15,6 +15,9 @@ import com.cluehaven.puzzlegames.data.*
 import kotlinx.coroutines.delay
 import com.cluehaven.puzzlegames.ui.daily.LocalDailyTimer
 
+/** Lets isolated UI fixtures exercise timers/history without touching app saves. */
+internal val LocalPlayRecords = staticCompositionLocalOf<PlayRecords?> { null }
+
 @Composable
 fun PlayTimerLine(initial: PlayRecord, previouslyPlayed: Boolean, finished: Boolean, modifier: Modifier = Modifier,
     paused: Boolean = false, alignment: Arrangement.Horizontal = Arrangement.Center) {
@@ -27,7 +30,7 @@ fun PlayTimerLine(initial: PlayRecord, previouslyPlayed: Boolean, finished: Bool
         return
     }
     val context = LocalContext.current
-    val repository = remember(context) { PlayRecordRepository.get(context) }
+    val repository = LocalPlayRecords.current ?: remember(context) { PlayRecordRepository.get(context) }
     val owner = remember(context) {
         generateSequence(context) { (it as? ContextWrapper)?.baseContext }
             .filterIsInstance<LifecycleOwner>().firstOrNull()

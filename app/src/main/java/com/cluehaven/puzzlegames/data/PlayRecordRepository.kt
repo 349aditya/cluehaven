@@ -3,6 +3,7 @@ package com.cluehaven.puzzlegames.data
 import android.content.Context
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import java.util.concurrent.ConcurrentHashMap
 import com.cluehaven.puzzlegames.game.nonogram.*
 import com.cluehaven.puzzlegames.game.pipes.*
@@ -11,12 +12,18 @@ import com.cluehaven.puzzlegames.game.sudoku.SudokuStorage
 import com.cluehaven.puzzlegames.game.blocks.BlockStorage
 import java.time.LocalDate
 
-class PlayRecordRepository private constructor(context: Context) {
+interface PlayRecords {
+    val history: Flow<List<PlayRecord>>
+    suspend fun load(initial: PlayRecord): PlayRecord
+    fun save(record: PlayRecord)
+}
+
+class PlayRecordRepository private constructor(context: Context) : PlayRecords {
     private val dao = CluehavenDatabase.get(context).playRecords()
     private val latest = ConcurrentHashMap<String, PlayRecord>()
     private val writes = Channel<PlayRecord>(Channel.UNLIMITED)
     private val ready = CompletableDeferred<Unit>()
-    val history = dao.observeHistory()
+    override val history = dao.observeHistory()
 
     init {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
@@ -28,9 +35,12 @@ class PlayRecordRepository private constructor(context: Context) {
                             .load(session.gameId)?.takeIf { it.isComplete }?.playRecord()
                         session.gameId.startsWith("nonogram_") -> {
                             val id = session.gameId.removePrefix("nonogram_")
-                            val puzzle = if (id.startsWith("daily-")) NonogramEngine.daily(LocalDate.parse(id.removePrefix("daily-")))
-                                else NonogramEngine.puzzles.first { it.id == id }
-                            NonogramStorage.get(context).load(puzzle).takeIf { it.isComplete }?.playRecord()
+                            if (id.startsWith("endless-")) NonogramCodec.restoreEndless(session.payload)?.takeIf { it.isComplete }?.playRecord()
+                            else {
+                                val puzzle = if (id.startsWith("daily-")) NonogramEngine.daily(LocalDate.parse(id.removePrefix("daily-")))
+                                    else NonogramEngine.puzzles.first { it.id == id }
+                                NonogramStorage.get(context).load(puzzle).takeIf { it.isComplete }?.playRecord()
+                            }
                         }
                         session.gameId.startsWith("pipes_") -> PipeStorage.get(context)
                             .load(session.gameId.removePrefix("pipes_").toInt()).takeIf { it.isComplete }?.playRecord()
@@ -46,14 +56,14 @@ class PlayRecordRepository private constructor(context: Context) {
         }
     }
 
-    suspend fun load(initial: PlayRecord): PlayRecord {
+    override suspend fun load(initial: PlayRecord): PlayRecord {
         ready.await()
         latest[initial.id]?.let { return it }
         val saved = dao.get(initial.id) ?: initial
         return latest.putIfAbsent(initial.id, saved) ?: saved
     }
 
-    fun save(record: PlayRecord) {
+    override fun save(record: PlayRecord) {
         latest[record.id] = record
         check(writes.trySend(record).isSuccess)
     }

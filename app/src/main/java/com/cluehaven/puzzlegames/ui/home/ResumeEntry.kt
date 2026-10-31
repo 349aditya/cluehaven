@@ -4,6 +4,7 @@ import com.cluehaven.puzzlegames.data.PuzzleSession
 import com.cluehaven.puzzlegames.game.pipes.PipeEngine
 import com.cluehaven.puzzlegames.game.tilemerge.TileMergeEngine
 import com.cluehaven.puzzlegames.game.blocks.BlockEngine
+import com.cluehaven.puzzlegames.game.nonogram.NonogramCodec
 import org.json.JSONObject
 import java.time.LocalDate
 
@@ -30,6 +31,10 @@ fun resumeEntry(session: PuzzleSession, today: LocalDate = LocalDate.now()): Res
                 !tray.isNull(it) && BlockEngine.placements(board, BlockEngine.shape(tray.getString(it))).isNotEmpty()
             }
             if (playable) ResumeEntry("Block Garden · Score ${json.getInt("score")}", "blocks") else null
+        }
+        session.gameId.startsWith("nonogram_endless-") -> NonogramCodec.restoreEndless(session.payload)?.takeIf { !it.isComplete }?.let {
+            ResumeEntry("Nonogram · Endless · ${it.puzzle.size}×${it.puzzle.size} · ${it.puzzle.difficulty.label}",
+                "nonogram|${session.gameId.removePrefix("nonogram_")}")
         }
         session.gameId.startsWith("nonogram_") -> if (!json.optBoolean("complete"))
             ResumeEntry("Nonogram · Your saved picture", "nonogram|${session.gameId.removePrefix("nonogram_")}") else null
